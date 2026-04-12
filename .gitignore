@@ -36,6 +36,9 @@ yarn-error.log*
 # locus wallet private keys - NEVER COMMIT
 locus-wallet-*.txt
 
+# local database
+data/
+
 # vercel
 .vercel
 
