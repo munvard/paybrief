@@ -14,7 +14,7 @@ export async function createOrder(data: {
 }) {
   const id = generateId();
   const now = new Date().toISOString();
-  const tierPrices: Record<string, number> = { quick: 0.5, standard: 2, deep: 3 };
+  const tierPrices: Record<string, number> = { quick: 0.5, standard: 2, deep: 10 };
   const tier = data.pipelineTier || "quick";
   const price = tierPrices[tier] || 3;
   await db.insert(orders).values({

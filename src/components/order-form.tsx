@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 const TIERS = [
   { id: "quick", label: "Quick", desc: "~1 min", detail: "2 agents", price: "0.50", icon: "\u26a1", color: "text-cyan-400", border: "border-cyan-500/30" },
   { id: "standard", label: "Standard", desc: "5-10 min", detail: "3 agents + debate", price: "2.00", icon: "\ud83d\udd2c", color: "text-primary-light", border: "border-primary/30" },
-  { id: "deep", label: "Deep Dive", desc: "2-3+ hours", detail: "Full council", price: "3.00", icon: "\ud83c\udf0a", color: "text-accent-green", border: "border-green-500/30" },
+  { id: "deep", label: "Deep Dive", desc: "2-3+ hours", detail: "Full council", price: "10.00", icon: "\ud83c\udf0a", color: "text-accent-green", border: "border-green-500/30" },
 ];
 
 const EXAMPLE_TASKS = [
