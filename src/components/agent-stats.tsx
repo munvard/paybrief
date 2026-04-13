@@ -39,8 +39,8 @@ export function AgentStats() {
   const items = [
     { label: "WALLET BALANCE", value: `$${Number(stats.walletBalance).toFixed(2)}`, color: "text-accent" },
     { label: "JOBS COMPLETED", value: String(stats.jobsCompleted), color: "text-foreground" },
-    { label: "TOTAL REVENUE", value: `$${stats.totalRevenue.toFixed(2)}`, color: "text-accent-green" },
-    { label: "PROFIT MARGIN", value: `${stats.marginPercent}%`, color: stats.marginPercent > 90 ? "text-accent-green" : "text-foreground" },
+    { label: "TOTAL API CALLS", value: String(stats.apiCallCount), color: "text-foreground" },
+    { label: "DATA SOURCES", value: "9 APIs", color: "text-accent" },
   ];
 
   return (

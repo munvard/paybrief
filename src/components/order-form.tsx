@@ -10,10 +10,10 @@ const TIERS = [
 ];
 
 const EXAMPLE_TASKS = [
-  "Ethereum price analysis and market sentiment",
-  "Tesla stock performance vs competitors",
-  "Stripe competitive landscape and pricing",
-  "AI chip market overview 2026",
+  "Full competitive analysis of Stripe vs Adyen vs Square in global payments",
+  "NVIDIA financial deep dive with SEC filings and competitive positioning",
+  "Solana DeFi ecosystem: top protocols, TVL trends, and Ethereum comparison",
+  "Series A fundraising landscape for AI startups in 2026",
 ];
 
 export function OrderForm() {

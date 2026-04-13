@@ -124,11 +124,7 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
                       {d.durationMs != null && d.durationMs > 0 && (
                         <span className="text-[10px] text-muted-foreground font-mono">{(d.durationMs / 1000).toFixed(1)}s</span>
                       )}
-                      {d.costUsdc > 0 && (
-                        <span className="text-[10px] text-accent-green font-mono ml-auto">
-                          ${d.costUsdc.toFixed(3)}
-                        </span>
-                      )}
+                      {/* Cost hidden from users — visible in admin only */}
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {d.reasoning}
@@ -153,8 +149,8 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
             {uniqueApis.length > 0 && ` \u00b7 ${uniqueApis.length} APIs`}
             {rounds.size > 1 && ` \u00b7 ${rounds.size} rounds`}
           </span>
-          <span className="data-readout text-accent-green">
-            COST: ${totalCost.toFixed(4)}
+          <span className="data-readout text-accent">
+            {deduped.filter(d => d.status === "success").length} completed
           </span>
         </div>
       )}

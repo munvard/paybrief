@@ -135,24 +135,8 @@ export default function StatusPage() {
                 <p className="text-lg font-bold">{uniqueApis.length}</p>
               </div>
               <div className="rounded-xl bg-card border border-border p-3 text-center">
-                <p className="text-xs text-muted-foreground">Cost</p>
-                <p className="text-lg font-bold font-mono">${totalCost.toFixed(3)}</p>
-              </div>
-            </div>
-
-            {/* Economics */}
-            <div className="rounded-xl bg-card border border-border p-4 mb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Revenue</span>
-                <span className="font-mono">$3.00</span>
-              </div>
-              <div className="flex justify-between text-sm mt-1">
-                <span className="text-muted-foreground">API Cost</span>
-                <span className="font-mono">-${totalCost.toFixed(4)}</span>
-              </div>
-              <div className="border-t border-border mt-2 pt-2 flex justify-between text-sm font-bold">
-                <span className="text-green-400">Profit</span>
-                <span className="text-green-400 font-mono">${(3 - totalCost).toFixed(4)}</span>
+                <p className="text-xs text-muted-foreground">Sources</p>
+                <p className="text-lg font-bold">{decisions.filter(d => d.resultSummary).length}</p>
               </div>
             </div>
 
