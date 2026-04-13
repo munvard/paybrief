@@ -84,7 +84,18 @@ export default function ReportPage() {
               ? meta.taskDescription.slice(0, 80)
               : `Report: ${meta.companyName || "Research"}`}
           </h1>
-          <div className="flex flex-wrap gap-3 text-sm">
+          <div className="flex flex-wrap gap-3 text-sm items-center">
+            {meta.roundCount && (
+              <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400">
+                {meta.roundCount} round{meta.roundCount > 1 ? "s" : ""}
+                {meta.durationMs && ` \u00b7 ${Math.round(meta.durationMs / 1000)}s`}
+              </span>
+            )}
+            {meta.totalApiCalls && (
+              <span className="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {meta.totalApiCalls} API calls
+              </span>
+            )}
             {meta.taskType && (
               <span className="px-2 py-0.5 rounded bg-primary/10 text-primary-light">
                 {meta.taskType.replace("_", " ")}

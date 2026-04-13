@@ -58,7 +58,8 @@ export const agentDecisions = sqliteTable("agent_decisions", {
     .notNull()
     .references(() => orders.id),
   step: integer("step").notNull(),
-  action: text("action").notNull(), // classify, plan, call_api, synthesize, deliver
+  round: integer("round").notNull().default(0),
+  action: text("action").notNull(), // classify, plan, call_api, synthesize, deliver, analyze
   provider: text("provider"),
   reasoning: text("reasoning").notNull(),
   resultSummary: text("result_summary"),

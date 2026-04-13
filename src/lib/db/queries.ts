@@ -159,6 +159,7 @@ export async function getTotalCosts() {
 export async function logDecision(data: {
   orderId: string;
   step: number;
+  round?: number;
   action: string;
   provider?: string;
   reasoning: string;
@@ -172,6 +173,7 @@ export async function logDecision(data: {
     id,
     orderId: data.orderId,
     step: data.step,
+    round: data.round || 0,
     action: data.action,
     provider: data.provider || null,
     reasoning: data.reasoning,

@@ -7,7 +7,9 @@ const CAPABILITIES = [
   { label: "SEC Filings", icon: "\u2263", desc: "EDGAR public filings" },
   { label: "Companies", icon: "\u25cb", desc: "Apollo enrichment" },
   { label: "Web Search", icon: "\u2315", desc: "Exa + Brave + Perplexity" },
-  { label: "Analysis", icon: "\u2734", desc: "Gemini synthesis" },
+  { label: "Multi-Round", icon: "\u21bb", desc: "Iterative deep research" },
+  { label: "Agent API", icon: "\u26a1", desc: "Agent-to-agent hire" },
+  { label: "Synthesis", icon: "\u2734", desc: "Gemini analysis" },
 ];
 
 export default function Home() {
@@ -53,7 +55,7 @@ export default function Home() {
           </div>
 
           {/* Capabilities */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-12">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12">
             {CAPABILITIES.map((cap) => (
               <div
                 key={cap.label}
@@ -71,7 +73,7 @@ export default function Home() {
             {[
               { step: "1", title: "Describe your task", desc: "Tell me what you need researched in plain text" },
               { step: "2", title: "Pay 3 USDC", desc: "Quick checkout via Locus on Base chain" },
-              { step: "3", title: "Watch me work", desc: "See my decisions, API calls, and reasoning live" },
+              { step: "3", title: "Watch me work", desc: "Multi-round research with 15+ decision steps, live" },
               { step: "4", title: "Get your report", desc: "Comprehensive analysis with data and sources" },
             ].map((s) => (
               <div key={s.step} className="rounded-xl bg-card border border-border p-5">

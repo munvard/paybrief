@@ -27,11 +27,19 @@ ${getRegistryPrompt()}
 
 ## Task Types and Routing Rules
 
-- **crypto**: Anything about cryptocurrencies, tokens, DeFi, blockchain projects. Use coingecko + exa.
-- **public_company**: Publicly traded companies (have stock tickers). Use alphavantage + exa. Optionally edgar for SEC filings, apollo for enrichment.
-- **startup**: Private companies, startups, SaaS products. Use exa + apollo. Optionally firecrawl for their website.
-- **person**: Research about a specific person (CEO, founder, etc). Use exa + perplexity.
-- **general**: Anything else — markets, industries, trends, concepts. Use exa + perplexity.
+- **crypto**: Cryptocurrencies, tokens, DeFi, blockchain projects, exchanges. Examples: Bitcoin, Ethereum, Solana, Uniswap, DeFi, NFT. Use coingecko + exa.
+- **public_company**: Publicly traded companies with stock tickers. Examples: Apple (AAPL), Tesla (TSLA), Google (GOOGL), Amazon (AMZN), Microsoft (MSFT), NVIDIA (NVDA), Meta (META), Adyen. Use alphavantage + exa. Optionally edgar + apollo.
+- **startup**: Private companies, startups, SaaS products, tech companies without public stock. Examples: Stripe, Cursor, OpenAI, Anthropic, SpaceX, Figma, Linear, Notion, Vercel. Use exa + apollo. Optionally firecrawl.
+- **person**: Research about a specific person. Examples: Jensen Huang, Sam Altman, Elon Musk. Use exa + perplexity.
+- **general**: ONLY for broad topics, trends, industries, or concepts that are NOT about a specific entity. Examples: "AI chip market overview", "future of remote work", "climate tech trends". Use exa + perplexity.
+
+IMPORTANT: Only classify as "general" if the task is truly about a broad topic. If ANY specific company, person, or token is mentioned, use the appropriate specific type.
+
+## Common Identifiers (use in callParams)
+Stock tickers: AAPL (Apple), TSLA (Tesla), MSFT (Microsoft), AMZN (Amazon), GOOGL (Google), NVDA (NVIDIA), META (Meta)
+SEC CIK numbers: Apple=320193, Tesla=1318605, Microsoft=789019, Amazon=1018724, Google=1652044, Meta=1326801, NVIDIA=1045810
+Crypto IDs: bitcoin, ethereum, solana, cardano, polkadot, avalanche-2, chainlink, uniswap
+Domains: stripe.com, openai.com, anthropic.com, linear.app, notion.so, figma.com, vercel.com
 
 ## Output Rules
 
@@ -88,7 +96,12 @@ export async function classifyTask(
     "";
 
   try {
-    const parsed = JSON.parse(text) as TaskClassification;
+    // Try to extract JSON from response (may have markdown wrapping)
+    let jsonText = text.trim();
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonText = jsonMatch[0];
+
+    const parsed = JSON.parse(jsonText) as TaskClassification;
 
     // Validate required fields
     if (!parsed.taskType || !parsed.recommendedApis || !parsed.reasoning) {
@@ -98,7 +111,7 @@ export async function classifyTask(
     return parsed;
   } catch (err) {
     // Fallback classification if JSON parse fails
-    console.error("Classifier JSON parse failed, using fallback:", err);
+    console.error("Classifier JSON parse failed, using fallback. Raw text:", text.slice(0, 200), err);
     return {
       taskType: "general",
       entities: [taskDescription.split(" ").slice(0, 3).join(" ")],
@@ -132,5 +145,100 @@ export async function classifyTask(
       estimatedCost: 0.025,
       reasoning: `Fallback classification for: ${taskDescription}`,
     };
+  }
+}
+
+// ── Multi-Round: Plan Next Research Round ──
+
+export interface RoundPlan {
+  shouldContinue: boolean;
+  reasoning: string;
+  researchGoal: string;
+  apis: ApiPlan[];
+}
+
+const ROUND_PLANNER_PROMPT = `You are Agent Zero's research decision engine. You've completed a round of research and need to decide what to do next.
+
+Available APIs for deeper research:
+${getRegistryPrompt()}
+
+## Your Job
+1. Review what was found so far
+2. Identify GAPS — what important data is missing?
+3. Decide if another round of research is needed
+4. If yes, specify EXACTLY which APIs to call with precise callParams
+
+## Rules for callParams (CRITICAL — extract from findings):
+- apollo/org-enrichment: Extract company domain from findings (e.g., {"domain": "stripe.com"})
+- alphavantage/global-quote: Extract stock ticker (e.g., {"symbol": "AAPL"})
+- alphavantage/company-overview: Extract stock ticker (e.g., {"symbol": "AAPL"})
+- edgar/company-submissions: Extract CIK (e.g., {"cik": "320193"}) — common CIKs: Apple=320193, Tesla=1318605, Microsoft=789019, NVIDIA=1045810
+- firecrawl/scrape: Extract a specific URL found in search results (e.g., {"url": "https://stripe.com/pricing"})
+- exa/search: New targeted query (e.g., {"query": "Stripe revenue 2025", "numResults": 5})
+- coingecko/simple-price: Extract coin IDs (e.g., {"ids": "ethereum,solana"})
+- perplexity/chat: Specific follow-up question (e.g., {"query": "What is Stripe's current valuation?"})
+
+## When to STOP (shouldContinue: false):
+- We already have data from 3+ different source types
+- The task is simple and Round 1 data is sufficient
+- We've already done 2 rounds of deep research
+
+## When to CONTINUE (shouldContinue: true):
+- Found company names but no company enrichment data yet → call Apollo
+- Found stock tickers but no financial data yet → call Alpha Vantage
+- Found important URLs but haven't scraped them → call Firecrawl
+- Missing competitive comparison data
+- Missing financial/pricing data
+
+Respond with ONLY valid JSON:
+{
+  "shouldContinue": true,
+  "reasoning": "Why we should continue or stop",
+  "researchGoal": "What this next round aims to discover",
+  "apis": [{ "provider": "...", "endpoint": "...", "reason": "...", "estimatedCost": 0.01, "priority": "required", "callParams": {} }]
+}`;
+
+export async function planNextRound(
+  taskDescription: string,
+  taskType: TaskType,
+  priorResults: Array<{ provider: string; summary: string }>,
+  orderId: string
+): Promise<RoundPlan> {
+  const findingsSummary = priorResults
+    .map((r) => `- ${r.provider}: ${r.summary}`)
+    .join("\n");
+
+  const result = await geminiChat(
+    ROUND_PLANNER_PROMPT,
+    `Task: "${taskDescription}"
+Task type: ${taskType}
+
+## Findings so far:
+${findingsSummary}
+
+Decide: should we do another round of research? If yes, which APIs?`,
+    orderId,
+    { jsonMode: true, maxTokens: 1024 }
+  );
+
+  const text =
+    result.text ||
+    result.content ||
+    result.candidates?.[0]?.content?.parts?.[0]?.text ||
+    "";
+
+  try {
+    let jsonText = text.trim();
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonText = jsonMatch[0];
+
+    const parsed = JSON.parse(jsonText) as RoundPlan;
+    if (typeof parsed.shouldContinue !== "boolean") {
+      throw new Error("Invalid round plan");
+    }
+    return parsed;
+  } catch (err) {
+    console.error("planNextRound parse failed. Raw:", text.slice(0, 200), err);
+    return { shouldContinue: false, reasoning: "Analysis complete — proceeding to synthesis", researchGoal: "", apis: [] };
   }
 }
