@@ -7,6 +7,7 @@ import { ORDER_STATUSES, STATUS_LABELS, type OrderStatus } from "@/lib/utils";
 const POLL_INTERVAL = 3000;
 
 const PROGRESS_STEPS: OrderStatus[] = [
+  "PAYING",
   "PAID",
   "RESEARCHING",
   "SYNTHESIZING",
