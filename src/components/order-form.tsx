@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const TIERS = [
+  { id: "quick", label: "Quick", desc: "~1 min \u2022 2 agents", price: "0.50", icon: "\u26a1" },
+  { id: "standard", label: "Standard", desc: "5-10 min \u2022 3 agents \u2022 debate", price: "2.00", icon: "\ud83d\udd2c" },
+  { id: "deep", label: "Deep Dive", desc: "2-3+ hours \u2022 full council", price: "3.00", icon: "\ud83c\udf0a" },
+];
+
 const EXAMPLE_TASKS = [
   "Ethereum price analysis and market sentiment",
   "Tesla stock performance vs competitors",
@@ -15,6 +21,7 @@ export function OrderForm() {
   const router = useRouter();
   const [taskDescription, setTaskDescription] = useState("");
   const [email, setEmail] = useState("");
+  const [tier, setTier] = useState("standard");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,6 +40,7 @@ export function OrderForm() {
           taskDescription: taskDescription.trim(),
           companyName: taskDescription.trim().slice(0, 100),
           email: email || undefined,
+          pipelineTier: tier,
         }),
       });
 
@@ -69,6 +77,26 @@ export function OrderForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          {TIERS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTier(t.id)}
+              className={`rounded-xl border p-3 text-left transition-all ${
+                tier === t.id
+                  ? "border-primary bg-primary/10 ring-1 ring-primary/50"
+                  : "border-border bg-card hover:border-primary/30"
+              }`}
+            >
+              <div className="text-lg mb-1">{t.icon}</div>
+              <div className="text-sm font-semibold">{t.label}</div>
+              <div className="text-xs text-muted-foreground">{t.desc}</div>
+              <div className="text-sm font-bold mt-1 gradient-text">${t.price}</div>
+            </button>
+          ))}
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-1.5">
             What do you need researched? *
@@ -107,7 +135,7 @@ export function OrderForm() {
             background: "linear-gradient(180deg, #5934FF 0%, #4101F6 100%)",
           }}
         >
-          {loading ? "Creating task..." : "Hire Agent Zero — 3 USDC"}
+          {loading ? "Creating task..." : `Hire Agent Zero — $${TIERS.find(t => t.id === tier)!.price} USDC`}
         </button>
       </form>
     </div>

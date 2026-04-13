@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOrder, updateOrderStatus } from "@/lib/db/queries";
-import { runResearchPipeline } from "@/lib/pipeline/orchestrator";
+import { getOrder } from "@/lib/db/queries";
+import { runPipelineSegment } from "@/lib/pipeline/orchestrator";
 
 // This is the long-running endpoint — must have max duration
 export const maxDuration = 120;
@@ -17,7 +17,14 @@ export async function POST(
   }
 
   // Only run pipeline if order is in a runnable state
-  const runnable = ["CREATED", "PAYING", "PAID", "CLASSIFYING", "EXECUTING"].includes(order.status);
+  const runnable = [
+    "CREATED",
+    "PAYING",
+    "PAID",
+    "CLASSIFYING",
+    "EXECUTING",
+    "SYNTHESIZING",
+  ].includes(order.status);
   if (!runnable) {
     return NextResponse.json({
       message: `Order is in ${order.status} state, not runnable`,
@@ -26,20 +33,25 @@ export async function POST(
   }
 
   try {
-    // Reset to PAID before running
-    if (order.status !== "PAID") {
-      await updateOrderStatus(id, "PAID");
-    }
-
-    const result = await runResearchPipeline(
+    const result = await runPipelineSegment(
       id,
       order.taskDescription || order.companyName
     );
 
+    if (result.done) {
+      return NextResponse.json({
+        message: "Pipeline completed",
+        reportId: result.reportId,
+        totalCost: result.totalCost,
+      });
+    }
+
+    // Segment finished but more work remains — status page will re-trigger
+    const updated = await getOrder(id);
     return NextResponse.json({
-      message: "Pipeline completed",
-      reportId: result.reportId,
-      totalCost: result.totalCost,
+      message: "Segment completed, more work needed",
+      status: "EXECUTING",
+      phase: updated?.pipelinePhase ?? null,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Pipeline failed";

@@ -16,6 +16,7 @@ export const maxDuration = 120;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const { tier } = body;
     const task = body.task || body.taskDescription;
 
     if (!task || typeof task !== "string" || task.trim().length < 3) {
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
     const orderId = await createOrder({
       companyName: task.trim().slice(0, 100),
       taskDescription: task.trim(),
+      pipelineTier: tier || "quick",
     });
 
     await updateOrderStatus(orderId, "PAID");

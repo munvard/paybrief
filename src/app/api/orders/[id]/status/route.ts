@@ -48,13 +48,15 @@ export async function GET(
     fetch(`${appUrl}/api/orders/${id}/run-pipeline`, { method: "POST" }).catch(() => {});
   }
 
-  // If stuck in CLASSIFYING or EXECUTING for >90 seconds, retry the pipeline
+  // If EXECUTING and last update was >10s ago, trigger next segment
+  // This is the self-chaining mechanism — each segment finishes,
+  // status page polls, detects pause, triggers next segment
   if (
-    (order.status === "CLASSIFYING" || order.status === "EXECUTING") &&
+    order.status === "EXECUTING" &&
     order.updatedAt
   ) {
-    const stuckSince = Date.now() - new Date(order.updatedAt).getTime();
-    if (stuckSince > 90_000) {
+    const timeSinceUpdate = Date.now() - new Date(order.updatedAt).getTime();
+    if (timeSinceUpdate > 10_000) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       fetch(`${appUrl}/api/orders/${id}/run-pipeline`, { method: "POST" }).catch(() => {});
     }
@@ -68,12 +70,16 @@ export async function GET(
     taskDescription?: string;
     reportId?: string;
     errorMessage?: string;
+    pipelinePhase?: number | null;
+    pipelineTier?: string | null;
   } = {
     status: order.status,
     label: STATUS_LABELS[order.status as OrderStatus] || order.status,
     companyName: order.companyName,
     taskType: order.taskType || undefined,
     taskDescription: order.taskDescription || undefined,
+    pipelinePhase: order.pipelinePhase ?? null,
+    pipelineTier: order.pipelineTier ?? null,
   };
 
   if (order.status === "COMPLETED") {

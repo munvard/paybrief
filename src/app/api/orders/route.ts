@@ -4,7 +4,7 @@ import { createOrder, getAllOrders } from "@/lib/db/queries";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { companyName, taskDescription, focusArea, email } = body;
+    const { companyName, taskDescription, focusArea, email, pipelineTier } = body;
 
     const task = taskDescription || companyName;
     if (!task || typeof task !== "string" || !task.trim()) {
@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       taskDescription: task.trim(),
       focusArea: focusArea || "all",
       email: email || undefined,
+      pipelineTier: pipelineTier || "quick",
     });
 
     return NextResponse.json({ orderId });
