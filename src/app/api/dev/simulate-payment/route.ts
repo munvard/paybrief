@@ -11,11 +11,15 @@ export const maxDuration = 120;
  * Usage: POST /api/dev/simulate-payment  { "orderId": "..." }
  */
 export async function POST(req: NextRequest) {
+  // Protected by admin secret in production
   if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "Not available in production" },
-      { status: 403 }
-    );
+    const { searchParams } = new URL(req.url);
+    if (searchParams.get("secret") !== process.env.ADMIN_SECRET) {
+      return NextResponse.json(
+        { error: "Not available in production" },
+        { status: 403 }
+      );
+    }
   }
 
   try {

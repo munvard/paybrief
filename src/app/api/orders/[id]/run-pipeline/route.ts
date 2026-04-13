@@ -16,8 +16,8 @@ export async function POST(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Only run pipeline if order is in a state that needs it
-  const runnable = ["PAID", "CLASSIFYING", "EXECUTING"].includes(order.status);
+  // Only run pipeline if order is in a runnable state
+  const runnable = ["CREATED", "PAYING", "PAID", "CLASSIFYING", "EXECUTING"].includes(order.status);
   if (!runnable) {
     return NextResponse.json({
       message: `Order is in ${order.status} state, not runnable`,
@@ -26,8 +26,8 @@ export async function POST(
   }
 
   try {
-    // Reset to PAID if stuck in partial state
-    if (order.status === "CLASSIFYING" || order.status === "EXECUTING") {
+    // Reset to PAID before running
+    if (order.status !== "PAID") {
       await updateOrderStatus(id, "PAID");
     }
 
