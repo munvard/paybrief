@@ -5,11 +5,15 @@ export const orders = sqliteTable("orders", {
   companyName: text("company_name").notNull(),
   focusArea: text("focus_area").notNull().default("all"),
   email: text("email"),
-  amountUsdc: real("amount_usdc").notNull().default(5),
+  amountUsdc: real("amount_usdc").notNull().default(3),
   status: text("status").notNull().default("CREATED"),
   checkoutSessionId: text("checkout_session_id"),
   locusTransactionId: text("locus_transaction_id"),
   errorMessage: text("error_message"),
+  // Agent-specific fields
+  taskDescription: text("task_description"),
+  taskType: text("task_type"),
+  classificationJson: text("classification_json"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   completedAt: text("completed_at"),
@@ -45,5 +49,21 @@ export const apiCosts = sqliteTable("api_costs", {
   provider: text("provider").notNull(),
   endpoint: text("endpoint").notNull(),
   costUsdc: real("cost_usdc").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+});
+
+export const agentDecisions = sqliteTable("agent_decisions", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => orders.id),
+  step: integer("step").notNull(),
+  action: text("action").notNull(), // classify, plan, call_api, synthesize, deliver
+  provider: text("provider"),
+  reasoning: text("reasoning").notNull(),
+  resultSummary: text("result_summary"),
+  costUsdc: real("cost_usdc").notNull().default(0),
+  durationMs: integer("duration_ms"),
+  status: text("status").notNull().default("pending"), // pending, running, success, failed, skipped
   createdAt: text("created_at").notNull(),
 });

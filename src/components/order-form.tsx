@@ -3,20 +3,24 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const EXAMPLE_TASKS = [
+  "Ethereum price analysis and market sentiment",
+  "Tesla stock performance vs competitors",
+  "Stripe competitive landscape and pricing",
+  "AI chip market overview 2026",
+  "Who is the CEO of Anthropic?",
+];
+
 export function OrderForm() {
   const router = useRouter();
-  const [companyName, setCompanyName] = useState("");
-  const [focusArea, setFocusArea] = useState("all");
+  const [taskDescription, setTaskDescription] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!companyName.trim()) {
-      setError("Please enter a company or product name");
-      return;
-    }
+    if (!taskDescription.trim()) return;
 
     setLoading(true);
     setError("");
@@ -26,82 +30,86 @@ export function OrderForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyName: companyName.trim(),
-          focusArea,
-          email: email.trim() || undefined,
+          taskDescription: taskDescription.trim(),
+          companyName: taskDescription.trim().slice(0, 100),
+          email: email || undefined,
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create order");
+      if (!res.ok) throw new Error(data.error || "Failed to create task");
 
       router.push(`/checkout/${data.orderId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div>
-        <label className="block text-sm font-medium mb-1.5">
-          Company / Product Name *
-        </label>
-        <input
-          type="text"
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-          placeholder="e.g. Stripe, Notion, Linear"
-          className="w-full rounded-lg bg-muted border border-border px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-        />
+    <div className="rounded-2xl bg-card border border-border p-8">
+      <h2 className="text-2xl font-bold mb-2">Hire Agent Zero</h2>
+      <p className="text-muted-foreground mb-6">
+        Describe your research task. I&apos;ll decide which tools to use and deliver results.
+      </p>
+
+      {/* Example chips */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        {EXAMPLE_TASKS.map((example) => (
+          <button
+            key={example}
+            type="button"
+            onClick={() => setTaskDescription(example)}
+            className="text-xs px-3 py-1.5 rounded-full bg-muted border border-border hover:border-primary/50 hover:text-primary-light transition truncate max-w-[220px]"
+          >
+            {example}
+          </button>
+        ))}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1.5">Focus Area</label>
-        <select
-          value={focusArea}
-          onChange={(e) => setFocusArea(e.target.value)}
-          className="w-full rounded-lg bg-muted border border-border px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-        >
-          <option value="all">Full Overview (competitors + pricing + market)</option>
-          <option value="competitors">Competitors Only</option>
-          <option value="pricing">Pricing Analysis Only</option>
-          <option value="market">Market Overview Only</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1.5">
-          Email (optional)
-        </label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Get a link to your brief via email"
-          className="w-full rounded-lg bg-muted border border-border px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-        />
-      </div>
-
-      {error && (
-        <div className="text-red-400 text-sm bg-red-400/10 rounded-lg px-4 py-2">
-          {error}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            What do you need researched? *
+          </label>
+          <textarea
+            value={taskDescription}
+            onChange={(e) => setTaskDescription(e.target.value)}
+            placeholder="e.g. Analyze Ethereum's price trends and competitive position in the L1 space"
+            rows={3}
+            className="w-full rounded-lg bg-muted border border-border px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none"
+          />
         </div>
-      )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg py-3 px-4 font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          background: loading
-            ? "#3f3f46"
-            : "linear-gradient(180deg, #5934FF 0%, #4101F6 100%)",
-        }}
-      >
-        {loading ? "Creating order..." : "Continue to Payment — 5 USDC"}
-      </button>
-    </form>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            Your email (for delivery)
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@email.com"
+            className="w-full rounded-lg bg-muted border border-border px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-red-400">{error}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading || !taskDescription.trim()}
+          className="w-full rounded-lg py-3 px-4 font-semibold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: "linear-gradient(180deg, #5934FF 0%, #4101F6 100%)",
+          }}
+        >
+          {loading ? "Creating task..." : "Hire Agent Zero — 3 USDC"}
+        </button>
+      </form>
+    </div>
   );
 }

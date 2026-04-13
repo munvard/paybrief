@@ -1,23 +1,25 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, gt } from "drizzle-orm";
 import { db } from "./index";
-import { orders, reports, webhookEvents, apiCosts } from "./schema";
+import { orders, reports, webhookEvents, apiCosts, agentDecisions } from "./schema";
 import { generateId } from "../utils";
 
 // ── Orders ──
 
 export async function createOrder(data: {
   companyName: string;
-  focusArea: string;
+  focusArea?: string;
   email?: string;
+  taskDescription?: string;
 }) {
   const id = generateId();
   const now = new Date().toISOString();
   await db.insert(orders).values({
     id,
     companyName: data.companyName,
-    focusArea: data.focusArea,
+    focusArea: data.focusArea || "all",
     email: data.email || null,
-    amountUsdc: Number(process.env.BRIEF_PRICE_USDC) || 5,
+    taskDescription: data.taskDescription || null,
+    amountUsdc: Number(process.env.BRIEF_PRICE_USDC) || 3,
     status: "CREATED",
     createdAt: now,
     updatedAt: now,
@@ -150,4 +152,73 @@ export async function getTotalCosts() {
     })
     .from(apiCosts);
   return { total: result[0]?.total || 0, count: result[0]?.count || 0 };
+}
+
+// ── Agent Decisions ──
+
+export async function logDecision(data: {
+  orderId: string;
+  step: number;
+  action: string;
+  provider?: string;
+  reasoning: string;
+  resultSummary?: string;
+  costUsdc?: number;
+  durationMs?: number;
+  status?: string;
+}) {
+  const id = generateId();
+  await db.insert(agentDecisions).values({
+    id,
+    orderId: data.orderId,
+    step: data.step,
+    action: data.action,
+    provider: data.provider || null,
+    reasoning: data.reasoning,
+    resultSummary: data.resultSummary || null,
+    costUsdc: data.costUsdc || 0,
+    durationMs: data.durationMs || null,
+    status: data.status || "success",
+    createdAt: new Date().toISOString(),
+  });
+  return id;
+}
+
+export async function updateDecisionStatus(
+  id: string,
+  status: string,
+  extra?: { resultSummary?: string; costUsdc?: number; durationMs?: number }
+) {
+  await db
+    .update(agentDecisions)
+    .set({ status, ...extra })
+    .where(eq(agentDecisions.id, id));
+}
+
+export async function getDecisionsByOrderId(orderId: string, afterStep?: number) {
+  if (afterStep !== undefined) {
+    return db
+      .select()
+      .from(agentDecisions)
+      .where(
+        sql`${agentDecisions.orderId} = ${orderId} AND ${agentDecisions.step} > ${afterStep}`
+      )
+      .orderBy(agentDecisions.step);
+  }
+  return db
+    .select()
+    .from(agentDecisions)
+    .where(eq(agentDecisions.orderId, orderId))
+    .orderBy(agentDecisions.step);
+}
+
+export async function updateOrderClassification(
+  id: string,
+  taskType: string,
+  classificationJson: string
+) {
+  await db
+    .update(orders)
+    .set({ taskType, classificationJson, updatedAt: new Date().toISOString() })
+    .where(eq(orders.id, id));
 }

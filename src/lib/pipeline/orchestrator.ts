@@ -1,116 +1,198 @@
-import { exaSearch, firecrawlScrape, geminiChat } from "../locus/wrapped";
+import {
+  exaSearch,
+  firecrawlScrape,
+  geminiChat,
+  coinGeckoPrice,
+  coinGeckoMarkets,
+  alphaVantageQuote,
+  alphaVantageOverview,
+  apolloOrgEnrichment,
+  edgarFilings,
+  perplexityChat,
+  braveWebSearch,
+} from "../locus/wrapped";
 import {
   updateOrderStatus,
   createReport,
   getCostsByOrderId,
+  logDecision,
+  updateOrderClassification,
 } from "../db/queries";
+import { classifyTask, type ApiPlan, type TaskClassification } from "../agent/classifier";
+import { TASK_TYPE_CONFIGS } from "../agent/api-registry";
 
 interface PipelineResult {
   reportId: string;
   totalCost: number;
 }
 
-export async function runResearchPipeline(
+export async function runAgentPipeline(
   orderId: string,
-  companyName: string,
-  focusArea: string
+  taskDescription: string
 ): Promise<PipelineResult> {
+  let stepCounter = 0;
+
   try {
-    // ── Step 1: Research via Exa ──
-    await updateOrderStatus(orderId, "RESEARCHING");
+    // ── Step 1: Classify the task ──
+    await updateOrderStatus(orderId, "CLASSIFYING");
+    await logDecision({
+      orderId,
+      step: stepCounter++,
+      action: "classify",
+      reasoning: `Analyzing task: "${taskDescription.slice(0, 100)}"`,
+      status: "running",
+    });
 
-    const queries = buildSearchQueries(companyName, focusArea);
-    const searchResults: Array<{
-      title: string;
-      url: string;
-      text?: string;
-      highlights?: string[];
-    }> = [];
+    const classification = await classifyTask(taskDescription, orderId);
+    const config = TASK_TYPE_CONFIGS[classification.taskType];
 
-    for (const query of queries) {
-      try {
-        const result = await exaSearch(query, orderId, 5);
-        if (result.results) {
-          searchResults.push(...result.results);
-        }
-      } catch (err) {
-        console.error(`Exa search failed for "${query}":`, err);
-      }
-    }
-
-    if (searchResults.length === 0) {
-      throw new Error("No search results found — cannot generate brief");
-    }
-
-    // ── Step 2: Scrape top pages via Firecrawl ──
-    const maxScrape = Number(process.env.MAX_SCRAPE_PAGES) || 5;
-    const uniqueUrls = [
-      ...new Set(searchResults.map((r) => r.url)),
-    ].slice(0, maxScrape);
-    const scrapedContent: Array<{ url: string; content: string }> = [];
-
-    for (const url of uniqueUrls) {
-      try {
-        const result = await firecrawlScrape(url, orderId);
-        if (result.markdown) {
-          scrapedContent.push({
-            url,
-            content: result.markdown.slice(0, 3000),
-          });
-        }
-      } catch (err) {
-        console.error(`Firecrawl scrape failed for ${url}:`, err);
-      }
-    }
-
-    // ── Step 3: Synthesize via Gemini ──
-    await updateOrderStatus(orderId, "SYNTHESIZING");
-
-    const synthesisInput = buildSynthesisPrompt(
-      companyName,
-      focusArea,
-      searchResults,
-      scrapedContent
+    await updateOrderClassification(
+      orderId,
+      classification.taskType,
+      JSON.stringify(classification)
     );
 
+    await logDecision({
+      orderId,
+      step: stepCounter++,
+      action: "plan",
+      reasoning: classification.reasoning,
+      resultSummary: `Type: ${config?.label || classification.taskType} | APIs: ${classification.recommendedApis.map((a) => a.provider).join(", ")} | Est. cost: $${classification.estimatedCost.toFixed(3)}`,
+      costUsdc: 0.01,
+    });
+
+    // ── Step 2: Execute API calls ──
+    await updateOrderStatus(orderId, "EXECUTING");
+
+    const apiResults: Array<{ provider: string; endpoint: string; data: unknown }> = [];
+
+    for (const apiPlan of classification.recommendedApis) {
+      // Skip gemini -- it's used in synthesis step
+      if (apiPlan.provider === "gemini") continue;
+
+      const decisionId = await logDecision({
+        orderId,
+        step: stepCounter++,
+        action: "call_api",
+        provider: apiPlan.provider,
+        reasoning: apiPlan.reason,
+        status: "running",
+      });
+
+      const startTime = Date.now();
+
+      try {
+        const data = await callApiByPlan(apiPlan, orderId);
+        const duration = Date.now() - startTime;
+        const summary = summarizeApiResult(apiPlan.provider, data);
+
+        apiResults.push({ provider: apiPlan.provider, endpoint: apiPlan.endpoint, data });
+
+        await logDecision({
+          orderId,
+          step: stepCounter - 1, // update same step
+          action: "call_api",
+          provider: apiPlan.provider,
+          reasoning: apiPlan.reason,
+          resultSummary: summary,
+          costUsdc: apiPlan.estimatedCost,
+          durationMs: duration,
+          status: "success",
+        });
+      } catch (err) {
+        const duration = Date.now() - startTime;
+        const errorMsg = err instanceof Error ? err.message : "API call failed";
+
+        if (apiPlan.priority === "required") {
+          await logDecision({
+            orderId,
+            step: stepCounter - 1,
+            action: "call_api",
+            provider: apiPlan.provider,
+            reasoning: apiPlan.reason,
+            resultSummary: `FAILED: ${errorMsg}`,
+            durationMs: duration,
+            status: "failed",
+          });
+          // Don't throw -- try to continue with what we have
+          console.error(`Required API ${apiPlan.provider} failed:`, errorMsg);
+        } else {
+          await logDecision({
+            orderId,
+            step: stepCounter - 1,
+            action: "call_api",
+            provider: apiPlan.provider,
+            reasoning: `Skipped (optional): ${errorMsg}`,
+            durationMs: duration,
+            status: "skipped",
+          });
+        }
+      }
+    }
+
+    if (apiResults.length === 0) {
+      throw new Error("All API calls failed — cannot generate report");
+    }
+
+    // ── Step 3: Synthesize ──
+    await updateOrderStatus(orderId, "SYNTHESIZING");
+    await logDecision({
+      orderId,
+      step: stepCounter++,
+      action: "synthesize",
+      reasoning: `Synthesizing ${apiResults.length} data sources into final report`,
+      status: "running",
+    });
+
+    const synthesisPrompt = buildSynthesisPrompt(taskDescription, classification, apiResults);
     const geminiResult = await geminiChat(
-      getSynthesisSystemPrompt(),
-      synthesisInput,
+      getSynthesisSystemPrompt(classification.taskType),
+      synthesisPrompt,
       orderId
     );
 
-    const briefText = extractGeminiText(geminiResult);
+    const reportText = extractGeminiText(geminiResult);
+    if (!reportText) throw new Error("Synthesis returned empty response");
 
-    if (!briefText) {
-      throw new Error("Gemini returned empty response");
-    }
+    await logDecision({
+      orderId,
+      step: stepCounter - 1,
+      action: "synthesize",
+      reasoning: "Report synthesized successfully",
+      resultSummary: `Generated ${reportText.length} character report`,
+      costUsdc: 0.01,
+      status: "success",
+    });
 
     // ── Step 4: Save report ──
-    const sources = [
-      ...new Set([
-        ...searchResults.map((r) => r.url),
-        ...scrapedContent.map((s) => s.url),
-      ]),
-    ];
-
+    const sources = extractSources(apiResults);
     const costs = await getCostsByOrderId(orderId);
     const totalCost = costs.reduce((sum, c) => sum + c.costUsdc, 0);
 
     const contentJson = JSON.stringify({
-      companyName,
-      focusArea,
+      taskDescription,
+      taskType: classification.taskType,
+      entities: classification.entities,
       generatedAt: new Date().toISOString(),
-      searchResultCount: searchResults.length,
-      scrapedPageCount: scrapedContent.length,
-      sections: parseBriefSections(briefText),
+      apisCalled: apiResults.map((r) => r.provider),
+      sections: parseBriefSections(reportText),
     });
 
     const reportId = await createReport({
       orderId,
       contentJson,
-      contentMarkdown: briefText,
+      contentMarkdown: reportText,
       sources: JSON.stringify(sources),
       researchCostUsdc: totalCost,
+    });
+
+    await logDecision({
+      orderId,
+      step: stepCounter++,
+      action: "deliver",
+      reasoning: `Report delivered. Total cost: $${totalCost.toFixed(4)} | Profit: $${(3 - totalCost).toFixed(4)}`,
+      resultSummary: `Report ID: ${reportId}`,
+      status: "success",
     });
 
     await updateOrderStatus(orderId, "COMPLETED", {
@@ -119,78 +201,191 @@ export async function runResearchPipeline(
 
     return { reportId, totalCost };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown pipeline error";
-    console.error(`Pipeline failed for order ${orderId}:`, message);
+    const message = error instanceof Error ? error.message : "Unknown pipeline error";
+    console.error(`Agent pipeline failed for ${orderId}:`, message);
+    await logDecision({
+      orderId,
+      step: stepCounter++,
+      action: "deliver",
+      reasoning: `Pipeline failed: ${message}`,
+      status: "failed",
+    });
     await updateOrderStatus(orderId, "FAILED", { errorMessage: message });
     throw error;
   }
 }
 
-function buildSearchQueries(company: string, focus: string): string[] {
-  const base = [
-    `${company} competitors analysis`,
-    `${company} pricing plans`,
-    `${company} market overview`,
-  ];
+// ── API Dispatcher ──
 
-  if (focus === "competitors") {
-    return [`${company} top competitors 2025 2026`, `${company} alternatives`, ...base.slice(0, 1)];
+async function callApiByPlan(plan: ApiPlan, orderId: string): Promise<unknown> {
+  const p = plan.callParams;
+  // Normalize: classifier may return "exa_search" or "exa/search" or provider="exa" endpoint="search"
+  const key = plan.endpoint
+    ? `${plan.provider}/${plan.endpoint}`
+    : plan.provider.replace("_", "/");
+
+  switch (key) {
+    case "exa/search":
+    case "exa_search":
+      return exaSearch(p.query as string || plan.provider, orderId, (p.numResults as number) || 8);
+    case "firecrawl/scrape":
+    case "firecrawl_scrape":
+      return firecrawlScrape(p.url as string, orderId);
+    case "coingecko/simple-price":
+    case "coingecko/price":
+    case "coingecko_price":
+      return coinGeckoPrice(p.ids as string, orderId);
+    case "coingecko/coins-markets":
+    case "coingecko_markets":
+      return coinGeckoMarkets(orderId, p.category as string | undefined);
+    case "alphavantage/global-quote":
+    case "alphavantage_quote":
+      return alphaVantageQuote(p.symbol as string, orderId);
+    case "alphavantage/company-overview":
+    case "alphavantage_overview":
+      return alphaVantageOverview(p.symbol as string, orderId);
+    case "apollo/org-enrichment":
+    case "apollo_org":
+      return apolloOrgEnrichment(p.domain as string, orderId);
+    case "edgar/company-submissions":
+    case "edgar_filings":
+      return edgarFilings(p.cik as string, orderId);
+    case "perplexity/chat":
+    case "perplexity_chat":
+      return perplexityChat(p.query as string || plan.provider, orderId);
+    case "brave/web-search":
+    case "brave_search":
+      return braveWebSearch((p.q || p.query) as string, orderId);
+    default:
+      throw new Error(`Unknown API: ${key} (provider=${plan.provider}, endpoint=${plan.endpoint})`);
   }
-  if (focus === "pricing") {
-    return [`${company} pricing plans cost`, `${company} pricing vs competitors`, ...base.slice(1, 2)];
-  }
-  if (focus === "market") {
-    return [`${company} market size TAM`, `${company} industry trends 2025 2026`, ...base.slice(2)];
-  }
-  return base;
 }
 
-function getSynthesisSystemPrompt(): string {
-  return `You are a senior market research analyst. Generate a professional competitive intelligence brief.
+// ── Result Summarizers ──
 
-Output the brief in clean markdown with these exact sections:
+function summarizeApiResult(provider: string, data: unknown): string {
+  try {
+    const d = data as Record<string, unknown>;
+    switch (provider) {
+      case "exa": {
+        const results = (d.results as Array<unknown>) || [];
+        return `Found ${results.length} search results`;
+      }
+      case "firecrawl": {
+        const md = d.markdown as string;
+        return md ? `Scraped ${md.length} chars of content` : "No content scraped";
+      }
+      case "coingecko": {
+        const keys = Object.keys(d);
+        if (keys.length > 0 && typeof d[keys[0]] === "object") {
+          const first = d[keys[0]] as Record<string, number>;
+          return `Price: $${first.usd?.toLocaleString() || "N/A"}`;
+        }
+        return `Got market data for ${Array.isArray(d) ? (d as Array<unknown>).length : 0} coins`;
+      }
+      case "alphavantage": {
+        const quote = d["Global Quote"] as Record<string, string> | undefined;
+        if (quote) return `${quote["01. symbol"]}: $${quote["05. price"]}`;
+        const name = d["Name"] as string;
+        return name ? `Company: ${name}` : "Got company data";
+      }
+      case "apollo": {
+        const org = d.organization as Record<string, unknown> | undefined;
+        return org ? `${org.name} — ${org.estimated_num_employees || "?"} employees` : "Got org data";
+      }
+      case "edgar": {
+        const filings = d.filings as Record<string, unknown> | undefined;
+        const recent = filings?.recent as Record<string, string[]> | undefined;
+        return recent ? `Found ${recent.form?.length || 0} recent filings` : "Got SEC data";
+      }
+      case "perplexity": {
+        const choices = (d.choices as Array<Record<string, unknown>>) || [];
+        const citations = (d.citations as string[]) || [];
+        return `AI search response with ${citations.length} citations`;
+      }
+      case "brave": {
+        const web = d.web as Record<string, unknown> | undefined;
+        const results = (web?.results as Array<unknown>) || [];
+        return `Found ${results.length} web results`;
+      }
+      default:
+        return "Data received";
+    }
+  } catch {
+    return "Data received";
+  }
+}
+
+function extractSources(apiResults: Array<{ provider: string; data: unknown }>): string[] {
+  const urls: string[] = [];
+  for (const r of apiResults) {
+    try {
+      const d = r.data as Record<string, unknown>;
+      if (r.provider === "exa") {
+        const results = (d.results as Array<{ url: string }>) || [];
+        urls.push(...results.map((x) => x.url));
+      } else if (r.provider === "brave") {
+        const web = d.web as Record<string, unknown> | undefined;
+        const results = (web?.results as Array<{ url: string }>) || [];
+        urls.push(...results.map((x) => x.url));
+      } else if (r.provider === "perplexity") {
+        const citations = (d.citations as string[]) || [];
+        urls.push(...citations);
+      }
+    } catch {
+      // skip
+    }
+  }
+  return [...new Set(urls)];
+}
+
+// ── Synthesis ──
+
+function getSynthesisSystemPrompt(taskType: string): string {
+  const typeHints: Record<string, string> = {
+    crypto: "Focus on price action, market sentiment, tokenomics, and competitive positioning in the crypto space.",
+    public_company: "Focus on financial performance, stock analysis, competitive positioning, and strategic outlook. Reference SEC filings and financial data.",
+    startup: "Focus on product-market fit, competitive landscape, funding history, and growth trajectory.",
+    person: "Focus on professional background, key achievements, current role, and industry influence.",
+    general: "Provide a comprehensive, well-structured overview of the topic.",
+  };
+
+  return `You are Agent Zero, an autonomous AI research agent. Generate a professional research report.
+
+${typeHints[taskType] || typeHints.general}
+
+Output in clean markdown with these sections:
 ## Executive Summary
-## Competitor Overview
-## Pricing Analysis
-## Market Insights
-## Key Takeaways
+## Key Findings
+## Detailed Analysis
+## Data Points
+## Takeaways
 
-Be specific with data points, company names, and pricing figures when available.
-Use bullet points for clarity. Keep each section focused and actionable.
-If data is limited for a section, note it honestly but still provide available insights.
-The total brief should be 800-1500 words.`;
+Be specific with data points, numbers, and sources. Use bullet points for clarity.
+The report should be 800-1500 words. Reference the specific data you received from APIs.`;
 }
 
 function buildSynthesisPrompt(
-  company: string,
-  focus: string,
-  searchResults: Array<{ title: string; url: string; text?: string; highlights?: string[] }>,
-  scrapedContent: Array<{ url: string; content: string }>
+  taskDescription: string,
+  classification: TaskClassification,
+  apiResults: Array<{ provider: string; endpoint: string; data: unknown }>
 ): string {
-  const searchSummary = searchResults
-    .map(
-      (r) =>
-        `### ${r.title}\nURL: ${r.url}\n${r.text?.slice(0, 500) || ""}\n${(r.highlights || []).join("\n")}`
-    )
+  const dataSections = apiResults
+    .map((r) => {
+      const summary = JSON.stringify(r.data, null, 2).slice(0, 4000);
+      return `### Data from ${r.provider} (${r.endpoint})\n\`\`\`json\n${summary}\n\`\`\``;
+    })
     .join("\n\n");
 
-  const scrapedSummary = scrapedContent
-    .map((s) => `### Source: ${s.url}\n${s.content}`)
-    .join("\n\n");
+  return `Task: "${taskDescription}"
+Classification: ${classification.taskType} — ${classification.reasoning}
+Entities: ${classification.entities.join(", ")}
 
-  return `Generate a competitive intelligence brief for: **${company}**
-Focus area: ${focus === "all" ? "Full overview (competitors, pricing, market)" : focus}
+## Research Data Collected
 
-## Research Data
+${dataSections}
 
-### Search Results
-${searchSummary || "No search results available."}
-
-### Scraped Page Content
-${scrapedSummary || "No scraped content available."}
-
-Generate the brief now based on the data above.`;
+Generate the report now based on all the data above.`;
 }
 
 function extractGeminiText(result: {
@@ -206,20 +401,17 @@ function extractGeminiText(result: {
   return "";
 }
 
-function parseBriefSections(
-  markdown: string
-): Array<{ title: string; content: string }> {
+function parseBriefSections(markdown: string): Array<{ title: string; content: string }> {
   const sections: Array<{ title: string; content: string }> = [];
   const parts = markdown.split(/^## /gm).filter(Boolean);
-
   for (const part of parts) {
     const lines = part.split("\n");
     const title = lines[0]?.trim() || "Section";
     const content = lines.slice(1).join("\n").trim();
     sections.push({ title, content });
   }
-
-  return sections.length > 0
-    ? sections
-    : [{ title: "Brief", content: markdown }];
+  return sections.length > 0 ? sections : [{ title: "Report", content: markdown }];
 }
+
+// Keep backward compat export for existing webhook/simulate handlers
+export { runAgentPipeline as runResearchPipeline };

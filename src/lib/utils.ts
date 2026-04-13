@@ -24,7 +24,8 @@ export const ORDER_STATUSES = [
   "CREATED",
   "PAYING",
   "PAID",
-  "RESEARCHING",
+  "CLASSIFYING",
+  "EXECUTING",
   "SYNTHESIZING",
   "COMPLETED",
   "FAILED",
@@ -33,11 +34,12 @@ export const ORDER_STATUSES = [
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  CREATED: "Order created",
+  CREATED: "Task submitted",
   PAYING: "Awaiting payment",
   PAID: "Payment confirmed",
-  RESEARCHING: "Researching competitors",
-  SYNTHESIZING: "Writing your brief",
-  COMPLETED: "Brief ready",
-  FAILED: "Generation failed",
+  CLASSIFYING: "Analyzing task...",
+  EXECUTING: "Executing research plan",
+  SYNTHESIZING: "Synthesizing findings",
+  COMPLETED: "Delivery ready",
+  FAILED: "Task failed",
 };

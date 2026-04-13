@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const session = await createCheckoutSession({
       orderId,
       amount: String(order.amountUsdc),
-      description: `PayBrief: Market brief for "${order.companyName}"`,
+      description: `Agent Zero: Research task — "${(order.taskDescription || order.companyName).slice(0, 60)}"`,
     });
 
     await updateOrderStatus(orderId, "PAYING", {

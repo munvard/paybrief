@@ -29,9 +29,7 @@ export default function ReportPage() {
         if (!res.ok) throw new Error(data.error || "Failed to load report");
         setReport(data.report);
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load report"
-        );
+        setError(err instanceof Error ? err.message : "Failed to load report");
       } finally {
         setLoading(false);
       }
@@ -60,13 +58,14 @@ export default function ReportPage() {
 
   const sources: string[] = JSON.parse(report.sources || "[]");
   const meta = JSON.parse(report.contentJson || "{}");
+  const apisCalled: string[] = meta.apisCalled || [];
 
   return (
     <div className="flex-1 flex flex-col">
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <a href="/" className="text-xl font-bold tracking-tight">
-            Pay<span className="gradient-text">Brief</span>
+            Agent<span className="gradient-text">Zero</span>
           </a>
           <span className="text-sm text-muted-foreground">
             Generated {new Date(report.createdAt).toLocaleDateString()}
@@ -78,20 +77,31 @@ export default function ReportPage() {
         {/* Title */}
         <div className="mb-10">
           <div className="inline-block mb-3 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-sm text-green-400">
-            Brief Complete
+            Delivery Complete
           </div>
-          <h1 className="text-4xl font-bold mb-2">
-            Market Brief:{" "}
-            <span className="gradient-text">{meta.companyName || "Report"}</span>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3">
+            {meta.taskDescription
+              ? meta.taskDescription.slice(0, 80)
+              : `Report: ${meta.companyName || "Research"}`}
           </h1>
-          <div className="flex gap-4 text-sm text-muted-foreground">
-            <span>Focus: {meta.focusArea || "all"}</span>
-            <span>{meta.searchResultCount || 0} sources searched</span>
-            <span>{meta.scrapedPageCount || 0} pages analyzed</span>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {meta.taskType && (
+              <span className="px-2 py-0.5 rounded bg-primary/10 text-primary-light">
+                {meta.taskType.replace("_", " ")}
+              </span>
+            )}
+            {apisCalled.map((api: string) => (
+              <span key={api} className="px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                {api}
+              </span>
+            ))}
+            <span className="text-muted-foreground">
+              Cost: ${report.researchCostUsdc.toFixed(4)} USDC
+            </span>
           </div>
         </div>
 
-        {/* Brief Content */}
+        {/* Report Content */}
         <article className="prose prose-invert prose-zinc max-w-none mb-16 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-foreground [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_ul]:text-zinc-300 [&_li]:mb-1 [&_strong]:text-foreground [&_a]:text-primary-light">
           <Markdown>{report.contentMarkdown}</Markdown>
         </article>
@@ -99,9 +109,7 @@ export default function ReportPage() {
         {/* Sources */}
         {sources.length > 0 && (
           <div className="border-t border-border pt-8">
-            <h3 className="text-lg font-semibold mb-4">
-              Sources ({sources.length})
-            </h3>
+            <h3 className="text-lg font-semibold mb-4">Sources ({sources.length})</h3>
             <ul className="space-y-2">
               {sources.map((url, i) => (
                 <li key={i}>
@@ -119,12 +127,18 @@ export default function ReportPage() {
           </div>
         )}
 
-        {/* Meta */}
-        <div className="mt-8 border-t border-border pt-6 text-sm text-muted-foreground">
-          <p>
-            Research cost: ${report.researchCostUsdc.toFixed(4)} USDC | Generated
-            by PayBrief using Locus Wrapped APIs
+        {/* CTA */}
+        <div className="mt-12 text-center border-t border-border pt-8">
+          <p className="text-muted-foreground mb-4">
+            Agent Zero completed this job for ${report.researchCostUsdc.toFixed(4)} USDC in API costs.
           </p>
+          <a
+            href="/"
+            className="inline-block rounded-lg py-3 px-8 font-semibold text-white transition-all"
+            style={{ background: "linear-gradient(180deg, #5934FF 0%, #4101F6 100%)" }}
+          >
+            Hire Agent Zero Again
+          </a>
         </div>
       </main>
     </div>

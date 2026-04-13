@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     await updateOrderStatus(orderId, "PAID");
 
     // Fire off the research pipeline (same as webhook handler)
-    runResearchPipeline(orderId, order.companyName, order.focusArea).catch(
+    runResearchPipeline(orderId, order.taskDescription || order.companyName).catch(
       (err) => {
         console.error(`Pipeline failed for ${orderId}:`, err);
         updateOrderStatus(orderId, "FAILED", {

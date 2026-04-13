@@ -74,8 +74,7 @@ export async function POST(req: NextRequest) {
       // Fire-and-forget pipeline
       runResearchPipeline(
         order.id,
-        order.companyName,
-        order.focusArea
+        order.taskDescription || order.companyName
       ).catch((err) => {
         console.error("Pipeline failed:", err);
       });

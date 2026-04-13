@@ -27,7 +27,7 @@ export async function GET(
         await updateOrderStatus(id, "PAID");
 
         // Fire-and-forget pipeline (same as webhook handler)
-        runResearchPipeline(id, order.companyName, order.focusArea).catch(
+        runResearchPipeline(id, order.taskDescription || order.companyName).catch(
           (err) => {
             console.error(`Pipeline failed for ${id}:`, err);
             updateOrderStatus(id, "FAILED", {
@@ -54,12 +54,16 @@ export async function GET(
     status: string;
     label: string;
     companyName: string;
+    taskType?: string;
+    taskDescription?: string;
     reportId?: string;
     errorMessage?: string;
   } = {
     status: order.status,
     label: STATUS_LABELS[order.status as OrderStatus] || order.status,
     companyName: order.companyName,
+    taskType: order.taskType || undefined,
+    taskDescription: order.taskDescription || undefined,
   };
 
   if (order.status === "COMPLETED") {

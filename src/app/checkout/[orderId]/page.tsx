@@ -87,7 +87,7 @@ export default function CheckoutPage() {
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <span className="text-xl font-bold tracking-tight">
-            Pay<span className="gradient-text">Brief</span>
+            Agent<span className="gradient-text">Zero</span>
           </span>
           <span className="text-sm text-muted-foreground">
             Secure Payment via Locus
@@ -98,9 +98,9 @@ export default function CheckoutPage() {
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-lg">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Complete Payment</h1>
+            <h1 className="text-3xl font-bold mb-2">Hire Agent Zero</h1>
             <p className="text-muted-foreground">
-              Pay 5 USDC to generate your market brief
+              Pay 3 USDC to start your research task
             </p>
           </div>
 

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PayBrief — AI Market Briefs in Minutes",
+  title: "Agent Zero — Autonomous AI Agent For Hire",
   description:
-    "Pay 5 USDC, get an AI-generated competitor and market intelligence brief. Powered by Locus.",
+    "An autonomous AI agent with its own wallet. Give it a research task, pay 3 USDC, and watch it decide which APIs to use and deliver results.",
 };
 
 export default function RootLayout({

@@ -4,17 +4,19 @@ import { createOrder, getAllOrders } from "@/lib/db/queries";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { companyName, focusArea, email } = body;
+    const { companyName, taskDescription, focusArea, email } = body;
 
-    if (!companyName || typeof companyName !== "string" || !companyName.trim()) {
+    const task = taskDescription || companyName;
+    if (!task || typeof task !== "string" || !task.trim()) {
       return NextResponse.json(
-        { error: "Company name is required" },
+        { error: "Task description is required" },
         { status: 400 }
       );
     }
 
     const orderId = await createOrder({
-      companyName: companyName.trim(),
+      companyName: (companyName || task).trim().slice(0, 100),
+      taskDescription: task.trim(),
       focusArea: focusArea || "all",
       email: email || undefined,
     });
