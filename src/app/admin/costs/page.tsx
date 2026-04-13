@@ -82,7 +82,7 @@ function AdminCostsInner() {
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <span className="text-xl font-bold tracking-tight">
-            Pay<span className="gradient-text">Brief</span>{" "}
+            Agent<span className="gradient-text">Zero</span>{" "}
             <span className="text-sm text-muted-foreground font-normal">
               Admin
             </span>

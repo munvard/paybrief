@@ -112,6 +112,30 @@ export default function ReportPage() {
           </div>
         </div>
 
+        {/* Research Council */}
+        {(meta.specialists || meta.debateCount || meta.totalPhases) && (
+          <div className="rounded-xl bg-card border border-border p-4 mb-8 flex flex-wrap gap-4 text-sm">
+            {meta.specialists && (
+              <div>
+                <span className="text-muted-foreground">Council: </span>
+                <span>{meta.specialists.join(", ")}</span>
+              </div>
+            )}
+            {meta.debateCount > 0 && (
+              <div>
+                <span className="text-muted-foreground">Debates: </span>
+                <span>{meta.debateCount}</span>
+              </div>
+            )}
+            {meta.totalPhases && (
+              <div>
+                <span className="text-muted-foreground">Phases: </span>
+                <span>{meta.totalPhases}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Report Content */}
         <article className="prose prose-invert prose-zinc max-w-none mb-16 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-10 [&_h2]:mb-4 [&_h2]:text-foreground [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_ul]:text-zinc-300 [&_li]:mb-1 [&_strong]:text-foreground [&_a]:text-primary-light">
           <Markdown>{report.contentMarkdown}</Markdown>

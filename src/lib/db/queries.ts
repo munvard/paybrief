@@ -1,4 +1,4 @@
-import { eq, desc, sql, gt } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./index";
 import { orders, reports, webhookEvents, apiCosts, agentDecisions } from "./schema";
 import { generateId } from "../utils";

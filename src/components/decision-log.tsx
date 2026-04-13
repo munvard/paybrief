@@ -1,11 +1,12 @@
 "use client";
 
-interface Decision {
+export interface Decision {
   id: string;
   step: number;
   round: number;
   action: string;
   provider: string | null;
+  specialist: string | null;
   reasoning: string;
   resultSummary: string | null;
   costUsdc: number;
@@ -21,6 +22,16 @@ const ACTION_CONFIG: Record<string, { icon: string; color: string; label: string
   call_api: { icon: "\u26A1", color: "text-yellow-400", label: "API Call" },
   synthesize: { icon: "\u2728", color: "text-green-400", label: "Synthesizing" },
   deliver: { icon: "\u2705", color: "text-emerald-400", label: "Complete" },
+  debate: { icon: "\u{1F4AC}", color: "text-orange-400", label: "Debate" },
+  brief: { icon: "\u{1F4DD}", color: "text-indigo-400", label: "Specialist Brief" },
+  expand: { icon: "\u{1F333}", color: "text-teal-400", label: "Expanding" },
+};
+
+const SPECIALIST_CONFIG: Record<string, { icon: string; color: string }> = {
+  researcher: { icon: "\u{1F50D}", color: "text-blue-400" },
+  data_analyst: { icon: "\u{1F4CA}", color: "text-green-400" },
+  investigator: { icon: "\u{1F575}\uFE0F", color: "text-yellow-400" },
+  moderator: { icon: "\u{1F9E0}", color: "text-purple-400" },
 };
 
 const ROUND_LABELS: Record<number, string> = {
@@ -28,6 +39,14 @@ const ROUND_LABELS: Record<number, string> = {
   1: "Round 2: Deep Dive",
   2: "Round 3: Fill Gaps",
 };
+
+function getRoundLabel(round: number, roundDecisions: Decision[]): string {
+  const firstAction = roundDecisions[0]?.action;
+  if (firstAction === "debate") return `Round ${round + 1}: Council Debate`;
+  if (firstAction === "brief") return `Round ${round + 1}: Specialist Analysis`;
+  if (firstAction === "expand") return `Round ${round + 1}: Research Expansion`;
+  return ROUND_LABELS[round] || `Round ${round + 1}`;
+}
 
 export function DecisionLog({ decisions }: { decisions: Decision[] }) {
   // Deduplicate by step+round — keep latest (running → success)
@@ -61,7 +80,7 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
             <div className="flex items-center gap-2 mb-2 mt-3">
               <div className="h-px flex-1 bg-border/50" />
               <span className="text-xs font-semibold text-primary-light uppercase tracking-wider px-2">
-                {ROUND_LABELS[round] || `Round ${round + 1}`}
+                {getRoundLabel(round, roundDecisions)}
               </span>
               <div className="h-px flex-1 bg-border/50" />
             </div>
@@ -79,13 +98,18 @@ export function DecisionLog({ decisions }: { decisions: Decision[] }) {
                   key={`${d.step}-${d.round}-${d.status}`}
                   className={`flex gap-3 p-3 rounded-lg bg-card border border-border transition-all ${isRunning ? "animate-pulse border-primary/30" : ""} ${isFailed ? "border-red-500/30" : ""}`}
                 >
-                  <div className={`text-lg shrink-0 ${config.color}`}>
-                    {config.icon}
+                  <div className={`text-lg shrink-0 ${d.specialist && SPECIALIST_CONFIG[d.specialist] ? SPECIALIST_CONFIG[d.specialist].color : config.color}`}>
+                    {d.specialist && SPECIALIST_CONFIG[d.specialist] ? SPECIALIST_CONFIG[d.specialist].icon : config.icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className={`text-sm font-medium ${config.color}`}>
-                        {config.label}
+                        {d.specialist && SPECIALIST_CONFIG[d.specialist] && (
+                          <span className={`${SPECIALIST_CONFIG[d.specialist].color} mr-1`}>
+                            {d.specialist.replace("_", " ")}
+                          </span>
+                        )}
+                        {d.specialist ? <span>{"\u2014 "}{config.label}</span> : config.label}
                         {d.provider && ` \u2014 ${d.provider}`}
                       </span>
                       {isRunning && (

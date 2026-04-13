@@ -3,23 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { STATUS_LABELS, type OrderStatus } from "@/lib/utils";
-import { DecisionLog } from "@/components/decision-log";
+import { DecisionLog, type Decision } from "@/components/decision-log";
 
 const POLL_INTERVAL = 2000;
-
-interface Decision {
-  id: string;
-  step: number;
-  round: number;
-  action: string;
-  provider: string | null;
-  reasoning: string;
-  resultSummary: string | null;
-  costUsdc: number;
-  durationMs: number | null;
-  status: string;
-  createdAt: string;
-}
 
 export default function StatusPage() {
   const params = useParams();
@@ -33,6 +19,8 @@ export default function StatusPage() {
   const [reportId, setReportId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [pipelinePhase, setPipelinePhase] = useState<number | undefined>();
+  const [pipelineTier, setPipelineTier] = useState<string | undefined>();
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(Date.now());
 
@@ -59,6 +47,8 @@ export default function StatusPage() {
         setLabel(statusData.label);
         setTaskDescription(statusData.taskDescription || statusData.companyName || "");
         setTaskType(statusData.taskType || "");
+        if (statusData.pipelinePhase !== undefined) setPipelinePhase(statusData.pipelinePhase);
+        if (statusData.pipelineTier) setPipelineTier(statusData.pipelineTier);
 
         if (statusData.status === "COMPLETED" && statusData.reportId) {
           setReportId(statusData.reportId);
@@ -91,6 +81,7 @@ export default function StatusPage() {
     .reduce((sum, d) => sum + d.costUsdc, 0);
   const uniqueApis = [...new Set(decisions.filter(d => d.provider && d.status === "success").map(d => d.provider))];
   const maxRound = decisions.length > 0 ? Math.max(...decisions.map(d => d.round)) + 1 : 0;
+  const maxPhase = pipelinePhase !== undefined ? pipelinePhase : maxRound;
 
   return (
     <div className="flex-1 flex flex-col">
@@ -106,7 +97,10 @@ export default function StatusPage() {
               </span>
             )}
             {isWorking && (
-              <span className="text-xs text-muted-foreground font-mono">{elapsed}s</span>
+              <span className="text-xs text-muted-foreground font-mono">
+                {pipelinePhase !== undefined && <span className="mr-2">Phase {pipelinePhase}</span>}
+                {elapsed}s
+              </span>
             )}
           </div>
         </div>
@@ -133,8 +127,8 @@ export default function StatusPage() {
                 <p className="text-lg font-bold">{elapsed}s</p>
               </div>
               <div className="rounded-xl bg-card border border-border p-3 text-center">
-                <p className="text-xs text-muted-foreground">Rounds</p>
-                <p className="text-lg font-bold">{maxRound}</p>
+                <p className="text-xs text-muted-foreground">Phases</p>
+                <p className="text-lg font-bold">{maxPhase}</p>
               </div>
               <div className="rounded-xl bg-card border border-border p-3 text-center">
                 <p className="text-xs text-muted-foreground">APIs Used</p>
@@ -209,6 +203,11 @@ export default function StatusPage() {
               {taskDescription && (
                 <p className="text-muted-foreground text-sm">
                   Task: &quot;{taskDescription.slice(0, 80)}&quot;
+                </p>
+              )}
+              {pipelineTier === "deep" && (
+                <p className="text-xs text-muted-foreground/70 mt-2">
+                  Deep Dive — may take 2-3+ hours
                 </p>
               )}
             </div>
