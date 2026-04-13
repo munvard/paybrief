@@ -2,101 +2,128 @@ import { OrderForm } from "@/components/order-form";
 import { AgentStats } from "@/components/agent-stats";
 
 const CAPABILITIES = [
-  { label: "Crypto", icon: "\u20bf", desc: "CoinGecko market data" },
-  { label: "Stocks", icon: "\u2191", desc: "Alpha Vantage financials" },
-  { label: "SEC Filings", icon: "\u2263", desc: "EDGAR public filings" },
-  { label: "Companies", icon: "\u25cb", desc: "Apollo enrichment" },
-  { label: "Web Search", icon: "\u2315", desc: "Exa + Brave + Perplexity" },
-  { label: "Multi-Round", icon: "\u21bb", desc: "Iterative deep research" },
-  { label: "Agent API", icon: "\u26a1", desc: "Agent-to-agent hire" },
-  { label: "Synthesis", icon: "\u2734", desc: "Gemini analysis" },
+  { label: "Crypto", icon: "\u20bf", desc: "CoinGecko markets", color: "text-amber-400" },
+  { label: "Stocks", icon: "\u2191", desc: "Alpha Vantage", color: "text-green-400" },
+  { label: "SEC Filings", icon: "\u2263", desc: "EDGAR data", color: "text-blue-400" },
+  { label: "Companies", icon: "\u25cb", desc: "Apollo intel", color: "text-purple-400" },
+  { label: "Web Search", icon: "\u2315", desc: "Exa + Brave", color: "text-cyan-400" },
+  { label: "Multi-Round", icon: "\u21bb", desc: "Iterative deep", color: "text-orange-400" },
+  { label: "Agent API", icon: "\u26a1", desc: "Agent-to-agent", color: "text-yellow-400" },
+  { label: "Synthesis", icon: "\u2734", desc: "Gemini AI", color: "text-pink-400" },
 ];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1">
-      <header className="border-b border-border/50 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <span className="text-xl font-bold tracking-tight">
-            Agent<span className="gradient-text">Zero</span>
-          </span>
-          <span className="text-sm text-muted-foreground">
-            Autonomous AI Agent &middot; Powered by Locus
-          </span>
+    <div className="flex flex-col flex-1 noise-bg">
+      {/* Header */}
+      <header className="border-b border-border/30 px-6 py-4 relative z-10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="status-dot" />
+            <span className="text-xl font-bold tracking-tight font-mono">
+              AGENT<span className="gradient-text">ZERO</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="data-readout text-muted-foreground hidden sm:block">
+              Autonomous Research Agent
+            </span>
+            <span className="data-readout text-accent/60">
+              POWERED BY LOCUS
+            </span>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1">
-        <section className="max-w-5xl mx-auto px-6 pt-16 pb-16">
-          {/* Hero */}
-          <div className="text-center mb-10">
-            <div className="inline-block mb-4 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary-light">
-              Autonomous Research Agent
+      <main className="flex-1 relative z-10">
+        {/* Hero with grid pattern */}
+        <section className="hero-bg grid-pattern">
+          <div className="max-w-6xl mx-auto px-6 pt-20 pb-16">
+            {/* Hero */}
+            <div className="text-center mb-14">
+              <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full border border-accent/20 bg-accent/5">
+                <div className="status-dot" />
+                <span className="data-readout text-accent">
+                  System Online &mdash; Ready for Tasks
+                </span>
+              </div>
+
+              <h1 className="text-5xl sm:text-7xl font-bold tracking-tight mb-8 leading-[1.1]" style={{ fontFamily: "'Sora', sans-serif" }}>
+                I research. I decide.
+                <br />
+                <span className="gradient-text">I deliver.</span>
+              </h1>
+
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-3 leading-relaxed">
+                An autonomous AI agent with its own wallet and research council.
+                Three specialist agents research independently, debate findings,
+                and deliver reports using 9 premium data sources.
+              </p>
+              <p className="text-sm text-muted-foreground/50 max-w-xl mx-auto font-mono">
+                // earns revenue &middot; manages costs &middot; keeps profit &middot; logs every decision
+              </p>
             </div>
-            <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6">
-              I research. I decide.
-              <br />
-              <span className="gradient-text">I deliver.</span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-4">
-              I&apos;m an AI agent with my own wallet. Give me a research task, pay 3 USDC,
-              and I&apos;ll autonomously decide which tools to use, execute the research,
-              and deliver a comprehensive report.
-            </p>
-            <p className="text-sm text-muted-foreground/70 max-w-xl mx-auto">
-              I earn revenue, manage my own API costs, and keep the profit.
-              Every decision I make is logged and visible.
-            </p>
-          </div>
 
-          {/* Agent Stats */}
-          <div className="mb-12">
-            <AgentStats />
-          </div>
+            {/* Agent Stats */}
+            <div className="mb-14">
+              <AgentStats />
+            </div>
 
-          {/* Capabilities */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-12">
-            {CAPABILITIES.map((cap) => (
-              <div
-                key={cap.label}
-                className="rounded-xl bg-card border border-border p-3 text-center"
-              >
-                <div className="text-xl mb-1 text-primary-light">{cap.icon}</div>
-                <p className="text-sm font-medium">{cap.label}</p>
-                <p className="text-xs text-muted-foreground">{cap.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* How it works */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-16">
-            {[
-              { step: "1", title: "Describe your task", desc: "Tell me what you need researched in plain text" },
-              { step: "2", title: "Pay 3 USDC", desc: "Quick checkout via Locus on Base chain" },
-              { step: "3", title: "Watch me work", desc: "Multi-round research with 15+ decision steps, live" },
-              { step: "4", title: "Get your report", desc: "Comprehensive analysis with data and sources" },
-            ].map((s) => (
-              <div key={s.step} className="rounded-xl bg-card border border-border p-5">
-                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary-light flex items-center justify-center text-sm font-bold mb-3">
-                  {s.step}
+            {/* Capabilities */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-14">
+              {CAPABILITIES.map((cap, i) => (
+                <div
+                  key={cap.label}
+                  className="glow-card p-3 text-center animate-fade-up"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <div className={`text-xl mb-1 ${cap.color}`}>{cap.icon}</div>
+                  <p className="text-sm font-semibold">{cap.label}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{cap.desc}</p>
                 </div>
-                <h3 className="font-semibold mb-1">{s.title}</h3>
-                <p className="text-sm text-muted-foreground">{s.desc}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Order Form */}
-          <div className="max-w-lg mx-auto">
-            <OrderForm />
+            {/* How it works */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-16">
+              {[
+                { step: "01", title: "Describe your task", desc: "Free-text research request", icon: "\u270e" },
+                { step: "02", title: "Choose depth", desc: "Quick \u00b7 Standard \u00b7 Deep Dive", icon: "\u2261" },
+                { step: "03", title: "Watch agents work", desc: "Live decision log + debates", icon: "\u25b6" },
+                { step: "04", title: "Get your report", desc: "Multi-source analysis", icon: "\u2713" },
+              ].map((s, i) => (
+                <div
+                  key={s.step}
+                  className="glow-card p-5 animate-fade-up"
+                  style={{ animationDelay: `${400 + i * 80}ms` }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">{s.icon}</span>
+                    <span className="data-readout text-primary-light">STEP {s.step}</span>
+                  </div>
+                  <h3 className="font-semibold mb-1">{s.title}</h3>
+                  <p className="text-sm text-muted-foreground">{s.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Order Form */}
+            <div className="max-w-lg mx-auto">
+              <OrderForm />
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border/50 px-6 py-6 mt-auto">
-        <div className="max-w-5xl mx-auto flex items-center justify-between text-sm text-muted-foreground">
-          <span>Agent Zero &mdash; Locus Paygentic Hackathon</span>
-          <span>Built with Locus Checkout + 9 Wrapped APIs</span>
+      {/* Footer */}
+      <footer className="border-t border-border/30 px-6 py-5 relative z-10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <span className="data-readout text-muted-foreground">
+            Agent Zero &mdash; Locus Paygentic Hackathon
+          </span>
+          <span className="data-readout text-muted-foreground/50">
+            9 APIs &middot; 3 Specialists &middot; Multi-Round Research
+          </span>
         </div>
       </footer>
     </div>

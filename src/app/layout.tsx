@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent Zero — Autonomous AI Agent For Hire",
+  title: "Agent Zero — Autonomous AI Research Council",
   description:
-    "An autonomous AI agent with its own wallet. Give it a research task, pay 3 USDC, and watch it decide which APIs to use and deliver results.",
+    "An autonomous AI agent with its own wallet and research council. Three specialist agents research, debate, and deliver using 9 premium data sources.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className="min-h-full flex flex-col bg-background text-foreground" style={{ fontFamily: "'Sora', var(--font-geist-sans), sans-serif" }}>
         {children}
       </body>
     </html>
