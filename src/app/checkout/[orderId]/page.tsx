@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 export default function CheckoutPage() {
@@ -11,7 +11,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
-  const [sessionId, setSessionId] = useState("");
+  const [paymentDetected, setPaymentDetected] = useState(false);
 
   useEffect(() => {
     async function initCheckout() {
@@ -25,7 +25,6 @@ export default function CheckoutPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to create session");
 
-        setSessionId(data.sessionId);
         setCheckoutUrl(data.checkoutUrl);
       } catch (err) {
         setError(
@@ -42,16 +41,44 @@ export default function CheckoutPage() {
   // Listen for postMessage from Locus checkout iframe
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
+      const d = event.data;
       if (
-        event.data?.type === "locus-checkout-success" ||
-        event.data?.event === "checkout.session.paid"
+        d?.type === "locus-checkout-success" ||
+        d?.event === "checkout.session.paid" ||
+        d?.type === "checkout-complete" ||
+        (typeof d === "string" && d.includes("paid"))
       ) {
+        setPaymentDetected(true);
         router.push(`/order/${orderId}/status`);
       }
     }
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [orderId, router]);
+
+  // Poll order status every 3s as fallback for payment detection
+  const pollPayment = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/status`);
+      const data = await res.json();
+      if (
+        res.ok &&
+        data.status !== "CREATED" &&
+        data.status !== "PAYING"
+      ) {
+        setPaymentDetected(true);
+        router.push(`/order/${orderId}/status`);
+      }
+    } catch {
+      // silently retry
+    }
+  }, [orderId, router]);
+
+  useEffect(() => {
+    if (paymentDetected || loading) return;
+    const interval = setInterval(pollPayment, 3000);
+    return () => clearInterval(interval);
+  }, [pollPayment, paymentDetected, loading]);
 
   if (loading) {
     return (
@@ -83,7 +110,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="flex-1 flex flex-col">
-      {/* Header */}
       <header className="border-b border-border/50 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <span className="text-xl font-bold tracking-tight">

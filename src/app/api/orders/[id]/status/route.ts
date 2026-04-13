@@ -5,8 +5,9 @@ import {
   updateOrderStatus,
 } from "@/lib/db/queries";
 import { getCheckoutSession } from "@/lib/locus/checkout";
-import { runResearchPipeline } from "@/lib/pipeline/orchestrator";
 import { STATUS_LABELS, type OrderStatus } from "@/lib/utils";
+
+export const maxDuration = 30;
 
 export async function GET(
   _req: NextRequest,
@@ -18,35 +19,44 @@ export async function GET(
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // If order is in PAYING state, poll Locus to check if payment completed
-  // This replaces webhook-based detection when no webhook secret is configured
+  // If PAYING, poll Locus to detect payment completion
   if (order.status === "PAYING" && order.checkoutSessionId) {
     try {
       const session = await getCheckoutSession(order.checkoutSessionId);
       if (session.status === "PAID") {
         await updateOrderStatus(id, "PAID");
 
-        // Fire-and-forget pipeline (same as webhook handler)
-        runResearchPipeline(id, order.taskDescription || order.companyName).catch(
-          (err) => {
-            console.error(`Pipeline failed for ${id}:`, err);
-            updateOrderStatus(id, "FAILED", {
-              errorMessage:
-                err instanceof Error ? err.message : "Pipeline failed",
-            });
-          }
-        );
+        // Trigger pipeline via dedicated long-running endpoint (non-blocking fetch)
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        fetch(`${appUrl}/api/orders/${id}/run-pipeline`, { method: "POST" }).catch(() => {});
 
-        // Return updated status immediately
         return NextResponse.json({
           status: "PAID",
           label: STATUS_LABELS["PAID"],
           companyName: order.companyName,
+          taskDescription: order.taskDescription || undefined,
         });
       }
     } catch (err) {
       console.error("Failed to poll checkout session:", err);
-      // Don't fail the status check — just return current DB status
+    }
+  }
+
+  // If PAID but pipeline hasn't started yet (no CLASSIFYING/EXECUTING), kick it off
+  if (order.status === "PAID") {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    fetch(`${appUrl}/api/orders/${id}/run-pipeline`, { method: "POST" }).catch(() => {});
+  }
+
+  // If stuck in CLASSIFYING or EXECUTING for >90 seconds, retry the pipeline
+  if (
+    (order.status === "CLASSIFYING" || order.status === "EXECUTING") &&
+    order.updatedAt
+  ) {
+    const stuckSince = Date.now() - new Date(order.updatedAt).getTime();
+    if (stuckSince > 90_000) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      fetch(`${appUrl}/api/orders/${id}/run-pipeline`, { method: "POST" }).catch(() => {});
     }
   }
 

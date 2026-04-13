@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrder, updateOrderStatus } from "@/lib/db/queries";
 import { runResearchPipeline } from "@/lib/pipeline/orchestrator";
 
+export const maxDuration = 120;
+
 /**
  * DEV ONLY: Simulates a successful payment and triggers the research pipeline.
  * Skips Locus checkout entirely — marks order as PAID and runs the pipeline.
