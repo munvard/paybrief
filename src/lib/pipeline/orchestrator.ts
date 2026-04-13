@@ -37,10 +37,24 @@ import { TASK_TYPE_CONFIGS } from "../agent/api-registry";
 
 const SEGMENT_TIME_BUDGET_MS = 80_000; // 80s budget per segment, leaves margin under 90s
 
+// Cost budgets per tier (USDC) — Deep Dive intentionally spends more than revenue
+const COST_BUDGETS: Record<string, number> = { quick: 0.50, standard: 2.00, deep: 8.00 };
+
 interface SegmentResult {
   done: boolean;
   reportId?: string;
   totalCost?: number;
+}
+
+// ── Cost Budget Check ──
+
+function estimateCurrentCost(state: PipelineState): number {
+  return state.allResults.length * 0.012; // rough average per API call
+}
+
+function isOverBudget(state: PipelineState): boolean {
+  const budget = COST_BUDGETS[state.tier] || 2.0;
+  return estimateCurrentCost(state) >= budget;
 }
 
 // ── Main Entry Point ──
@@ -199,6 +213,13 @@ async function researchPhase(
   state: PipelineState,
   hasTime: () => boolean
 ): Promise<SegmentResult> {
+  // Cost budget check
+  if (isOverBudget(state)) {
+    state.phaseType = "synthesize";
+    state.currentPhase++;
+    return { done: false };
+  }
+
   const round = Math.floor(state.currentPhase / 2);
   let callsMade = 0;
   const maxCallsPerSegment = state.tier === "quick" ? 4 : 3;
@@ -666,12 +687,43 @@ async function expandPhase(
   hasTime: () => boolean
 ): Promise<SegmentResult> {
   const round = Math.floor(state.currentPhase / 2);
-  const entitiesToExpand = state.entityQueue.splice(0, 3); // Pop up to 3 entities
+
+  // Cost budget check
+  if (isOverBudget(state)) {
+    state.phaseType = "synthesize";
+    await logDecision({
+      orderId, step: nextStep(state), round, action: "analyze",
+      specialist: "moderator",
+      reasoning: "Cost budget reached — proceeding to final synthesis",
+      status: "success",
+    });
+    state.currentPhase++;
+    return { done: false };
+  }
+
+  // Filter entity queue for relevance — remove generic/irrelevant entities
+  const taskDesc = state.classification?.entities.join(", ") || taskDescription;
+  const filteredQueue: string[] = [];
+  const genericTerms = new Set(["technology", "marketing", "sales", "social media", "financial services",
+    "real estate", "telecommunications", "media production", "management consulting", "information technology & services",
+    "online media", "advertising services", "data entry", "translation", "subtitling", "voiceovers",
+    "b2c", "b2b", "employer", "jobs", "credit scoring models", "digital islamic finance", "digital islamic investment",
+    "small businesses", "global investors", "invest money"]);
+
+  for (const entity of state.entityQueue) {
+    const lower = entity.toLowerCase();
+    if (genericTerms.has(lower)) continue;
+    if (lower.length < 3 || lower.length > 40) continue;
+    if (lower.includes("wikipedia") || lower.includes("google.com")) continue;
+    filteredQueue.push(entity);
+  }
+  state.entityQueue = filteredQueue;
+
+  const entitiesToExpand = state.entityQueue.splice(0, 3);
   let callsMade = 0;
 
   for (const entity of entitiesToExpand) {
     if (!hasTime()) {
-      // Put unconsumed entities back
       state.entityQueue.unshift(entity);
       break;
     }
@@ -1133,11 +1185,11 @@ function extractEntitiesFromResult(provider: string, data: unknown): string[] {
     if (provider === "apollo") {
       const org = d.organization as Record<string, unknown> | undefined;
       if (org) {
-        if (org.industry) entities.push(org.industry as string);
-        if (org.name) entities.push(org.name as string);
-        // Extract keywords which often contain competitor names
-        const keywords = org.keywords as string[] | undefined;
-        if (keywords) entities.push(...keywords.slice(0, 5));
+        // Only add company name, not generic industry labels
+        if (org.name && typeof org.name === "string" && org.name.length < 40) {
+          entities.push(org.name as string);
+        }
+        // Don't add industry or keywords — they're too generic and cause garbage expansion
       }
     } else if (provider === "exa" || provider === "brave") {
       // Extract domains AND meaningful titles from search results

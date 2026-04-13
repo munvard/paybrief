@@ -38,7 +38,8 @@ export interface PipelineState {
 }
 
 export function createInitialState(tier: "quick" | "standard" | "deep", specialists: string[]): PipelineState {
-  const maxPhases: Record<string, number> = { quick: 3, standard: 12, deep: 500 };
+  // Standard: ~20 phases for 5-10 min. Deep: 500 for 2-3+ hours.
+  const maxPhases: Record<string, number> = { quick: 3, standard: 25, deep: 500 };
   return {
     tier,
     currentPhase: 0,
@@ -80,10 +81,16 @@ export function shouldAnalyze(state: PipelineState): boolean {
 export function isComplete(state: PipelineState): boolean {
   if (state.phaseType === "complete") return true;
   if (state.currentPhase >= state.maxPhases) return true;
+  // Quick: 2-3 phases
   if (state.tier === "quick" && state.currentPhase >= 3) return true;
-  if (state.tier === "standard" && state.currentPhase >= 10) return true;
-  // Deep: only complete after exhaustive research — minimum 100 phases, 5+ debates, empty entity queue
+  // Standard: minimum 15 phases AND 1+ debate (ensures 5-10 min runtime)
+  if (state.tier === "standard" && state.currentPhase >= 15 && state.debateCount >= 1) return true;
+  // Deep: minimum 100 phases, 5+ debates, empty entity queue (ensures 2+ hour runtime)
   if (state.tier === "deep" && state.entityQueue.length === 0 && state.currentPhase >= 100 && state.debateCount >= 5) return true;
+  // Cost budget override: if over budget, complete regardless
+  const costBudgets: Record<string, number> = { quick: 0.50, standard: 2.00, deep: 8.00 };
+  const estimatedCost = state.allResults.length * 0.012;
+  if (estimatedCost >= (costBudgets[state.tier] || 2.0)) return true;
   return false;
 }
 
