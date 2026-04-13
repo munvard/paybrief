@@ -4,79 +4,87 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-PayBrief — a web app where users pay 5 USDC via Locus Checkout and receive an AI-generated competitive intelligence / market brief. Built for the Locus Paygentic Hackathon (Week 1).
-
-The full implementation plan is in `docs/PAYBRIEF_BUILD_PLAN.md`. Build phase-by-phase, verify acceptance criteria after each phase, do not skip ahead.
+Agent Zero — an autonomous AI agent that runs its own freelance research business. Users submit free-text research tasks, pay 3 USDC via Locus Checkout, and the agent autonomously classifies the task, decides which paid APIs to use, executes the research, and delivers a report. The agent has its own wallet, tracks its own P&L, and logs every decision visibly. Built for the Locus Paygentic Hackathon (Week 1).
 
 ## Tech Stack
 
-- Next.js 14+ (App Router), TypeScript, Tailwind CSS, shadcn/ui
-- Drizzle ORM with Turso (libSQL) for database
-- Locus Checkout SDK (`@withlocus/checkout-react`) for payments
-- Locus Wrapped APIs for research pipeline (Exa, Firecrawl, Gemini)
-- pnpm as package manager
+- Next.js 16 (App Router), TypeScript, Tailwind CSS v4
+- Drizzle ORM with Turso (libSQL) for database, local SQLite for dev
+- Locus Checkout (embedded iframe) for USDC payments
+- 9 Locus Wrapped APIs: Exa, Firecrawl, Gemini, CoinGecko, Alpha Vantage, Apollo, EDGAR SEC, Perplexity, Brave Search
+- npm as package manager, deployed on Vercel
 
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server
-pnpm build        # Production build
-pnpm lint         # ESLint
-pnpm db:generate  # Generate Drizzle migrations
-pnpm db:migrate   # Run migrations
-pnpm db:studio    # Open Drizzle Studio (DB browser)
+npm run dev       # Start dev server (port 3000)
+npm run build     # Production build
+npm run lint      # ESLint
 ```
 
 ## Architecture
 
-```
-src/
-  app/                          # Next.js App Router pages + API routes
-    api/
-      orders/                   # Order CRUD + status polling
-      webhooks/locus/           # Locus payment webhook (HMAC-SHA256 verified)
-      checkout/create-session/  # Creates Locus checkout sessions
-      reports/                  # Report content retrieval
-      admin/costs/              # Revenue/cost panel
-  lib/
-    db/                         # Drizzle schema, connection, queries
-    locus/                      # Locus API client, checkout, webhook verification, wrapped API calls
-    pipeline/                   # Research pipeline: search (Exa) → scrape (Firecrawl) → synthesize (Gemini)
-  components/                   # React components (order form, checkout widget, status tracker, report view)
-```
-
 ### Core Flow
 
-1. User submits order form → `POST /api/orders` creates order in DB
-2. Redirect to checkout page → Locus Checkout widget renders
-3. User pays 5 USDC → Locus sends webhook to `POST /api/webhooks/locus`
-4. Webhook handler verifies HMAC, marks order PAID, triggers pipeline async
-5. Pipeline calls Locus Wrapped APIs (Exa → Firecrawl → Gemini), updates status at each step
-6. Completed report saved to DB, status page polls and redirects to report page
+1. User submits free-text task → `POST /api/orders` creates order with `taskDescription`
+2. Redirect to `/checkout/[orderId]` → Locus Checkout iframe renders
+3. Checkout page polls `/api/orders/[id]/status` every 3s to detect payment
+4. On payment detected → status endpoint triggers `POST /api/orders/[id]/run-pipeline`
+5. Pipeline: Gemini classifies task type → selects APIs → executes calls → synthesizes report
+6. Status page polls `/api/orders/[id]/decisions` to stream agent reasoning in real-time
+7. On completion → redirects to `/report/[reportId]`
+
+### Agent Decision Engine (`src/lib/agent/`)
+
+The core differentiator. The agent uses Gemini to classify each task and select which APIs to call:
+
+- `classifier.ts` — Gemini call that takes free-text and returns `TaskClassification` (taskType, entities, recommendedApis with callParams)
+- `api-registry.ts` — Static registry of all 9 APIs with costs, capabilities, and task-type-to-API mappings
+
+Task types: `crypto` (CoinGecko), `public_company` (Alpha Vantage + EDGAR), `startup` (Apollo + Exa), `person` (Exa + Perplexity), `general` (Exa + Perplexity). All end with Gemini synthesis.
+
+### Dynamic Pipeline (`src/lib/pipeline/orchestrator.ts`)
+
+`runAgentPipeline(orderId, taskDescription)` — replaces the old fixed pipeline. Flow:
+1. CLASSIFYING → calls classifier, logs plan to `agent_decisions` table
+2. EXECUTING → loops through `recommendedApis`, calls each via `callApiByPlan()` dispatcher
+3. SYNTHESIZING → feeds all collected data into Gemini for final report
+4. Saves report, logs delivery with cost/profit summary
+
+The dispatcher (`callApiByPlan`) maps `provider/endpoint` strings to typed wrapper functions. Handles both `exa/search` and `exa_search` formats (classifier output varies).
 
 ### Key Tables
 
-- `orders` — lifecycle tracking (CREATED → PAYING → PAID → RESEARCHING → SYNTHESIZING → COMPLETED/FAILED)
-- `reports` — structured brief content (JSON + markdown) with sources
-- `webhook_events` — audit trail for idempotent webhook processing
-- `api_costs` — per-call cost tracking for wrapped API spend
+- `orders` — lifecycle tracking with `taskDescription`, `taskType`, `classificationJson` fields. Status flow: `CREATED → PAYING → PAID → CLASSIFYING → EXECUTING → SYNTHESIZING → COMPLETED/FAILED`
+- `agent_decisions` — per-step decision log (step, action, provider, reasoning, resultSummary, costUsdc, status). Polled by frontend for real-time display.
+- `reports` — markdown + JSON content with sources and cost
+- `api_costs` — per-API-call cost tracking for margin calculations
+- `webhook_events` — audit trail for Locus payment webhooks
 
-## Locus Integration (Verified)
+### Wrapped API Wrappers (`src/lib/locus/wrapped.ts`)
+
+All use `callWrappedApi()` which hits `POST /api/wrapped/{provider}/{endpoint}` with Bearer auth and logs cost to `api_costs`. Provider slugs (verified): `exa`, `firecrawl`, `gemini`, `coingecko`, `alphavantage`, `apollo`, `edgar`, `perplexity`, `brave`.
+
+### Vercel Serverless Considerations
+
+- Pipeline runs in `/api/orders/[id]/run-pipeline` with `maxDuration: 120` to avoid timeout
+- Status endpoint triggers pipeline via non-blocking `fetch()` to the run-pipeline endpoint
+- Stuck orders (CLASSIFYING/EXECUTING >90s) are auto-retried by the status endpoint
+- DB connection uses lazy Proxy to avoid initialization at build time (Turso URL not available during static generation)
+
+## Locus Integration
 
 - **API Base:** `https://beta-api.paywithlocus.com/api`
-- **Auth:** `Authorization: Bearer {LOCUS_API_KEY}` on all requests (key prefix: `claw_`)
-- **Create checkout session:** `POST /api/checkout/sessions` with `{amount, description, webhookUrl, successUrl, cancelUrl, metadata}`
-- **Checkout hosted URL:** `https://beta-checkout.paywithlocus.com/{sessionId}`
-- **React SDK:** `@withlocus/checkout-react` — `<LocusCheckout sessionId={id} mode="embedded" onSuccess={...} />`
-- **Webhook events:** `checkout.session.paid`, `checkout.session.expired` — verify HMAC-SHA256 with `whsec_*` secret
-- **Wrapped API pattern:** `POST /api/wrapped/{provider}/{endpoint}` — providers: exa, firecrawl, gemini, openai, etc.
-- **Wrapped API docs index:** `https://beta.paywithlocus.com/wapi/index.md`
-- **Full API reference:** See `docs/PAYBRIEF_BUILD_PLAN.md` Appendix A
+- **Auth:** `Authorization: Bearer {LOCUS_API_KEY}` (prefix: `claw_`)
+- **Checkout:** `POST /api/checkout/sessions` → embed `https://beta-checkout.paywithlocus.com/{sessionId}?embed=true`
+- **Wrapped APIs:** `POST /api/wrapped/{provider}/{endpoint}` — payment auto-deducted from wallet
+- **No webhook secret available** — payment detection uses server-side polling of `GET /api/checkout/sessions/{id}` instead
 
 ## Conventions
 
-- Order IDs use ULIDs (URL-safe, sortable, unguessable — no auth needed for order/report access)
-- No user authentication in MVP — security through unguessable IDs
-- Admin routes use `ADMIN_SECRET` query param, not real auth
-- Report generation runs as async fire-and-forget from webhook handler (no job queue)
-- All Locus Wrapped API calls must be logged to `api_costs` table for margin tracking
+- Order IDs use ULIDs (URL-safe, sortable, unguessable)
+- No user authentication — security through unguessable IDs
+- Admin/dev routes protected by `ADMIN_SECRET` query param
+- Price is 3 USDC per task (env: `BRIEF_PRICE_USDC`)
+- All Locus API calls logged to `api_costs` table for margin tracking
+- Agent decisions logged to `agent_decisions` table for real-time UI display
