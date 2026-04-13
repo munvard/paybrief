@@ -933,22 +933,49 @@ function generateFallbackResearchPlan(taskDescription: string, state: PipelineSt
     });
   }
 
-  // For deep tier: add more varied searches
-  if (state.tier === "deep") {
+  // For deep tier: ALWAYS generate lots of varied research angles
+  if (state.tier === "deep" || state.tier === "standard") {
+    const searchAngles = [
+      `${primaryEntity} competitors alternatives comparison 2026`,
+      `${primaryEntity} market analysis trends`,
+      `${primaryEntity} pricing revenue business model`,
+      `${primaryEntity} reviews pros cons`,
+      `${primaryEntity} future predictions outlook`,
+      `${primaryEntity} history founding story`,
+      `${primaryEntity} technology stack architecture`,
+      `${primaryEntity} team leadership management`,
+    ];
+
+    // Pick angles we haven't researched yet (based on phase number to vary)
+    const angleIndex = state.currentPhase % searchAngles.length;
     plan.push({
       provider: "exa", endpoint: "search",
-      reason: `Deep search: ${primaryEntity} competitors and alternatives`,
-      callParams: { query: `${primaryEntity} competitors alternatives comparison`, numResults: 8 },
+      reason: `Deep search angle ${angleIndex + 1}: ${searchAngles[angleIndex].split(" ").slice(1).join(" ")}`,
+      callParams: { query: searchAngles[angleIndex], numResults: 8 },
       specialist: "researcher",
     });
 
-    if (entities.length > 1) {
+    // Second angle
+    const angleIndex2 = (state.currentPhase + 3) % searchAngles.length;
+    if (angleIndex2 !== angleIndex) {
       plan.push({
-        provider: "exa", endpoint: "search",
-        reason: `Researching related entity: ${entities[1]}`,
-        callParams: { query: `${entities[1]} detailed analysis`, numResults: 5 },
+        provider: "perplexity", endpoint: "chat",
+        reason: `AI-powered research: ${searchAngles[angleIndex2]}`,
+        callParams: { query: searchAngles[angleIndex2] },
         specialist: "researcher",
       });
+    }
+
+    // Research unresearched entities from the queue
+    for (const entity of entities.slice(0, 3)) {
+      if (!state.researchedEntities.includes(entity)) {
+        plan.push({
+          provider: "exa", endpoint: "search",
+          reason: `Researching related entity: ${entity}`,
+          callParams: { query: `${entity} detailed analysis overview`, numResults: 5 },
+          specialist: "researcher",
+        });
+      }
     }
   }
 
@@ -1098,35 +1125,73 @@ function determineApisForEntity(entity: string, state: PipelineState): ApiPlan[]
 
 function extractEntitiesFromResult(provider: string, data: unknown): string[] {
   const entities: string[] = [];
+  const skipDomains = new Set(["google.com", "wikipedia.org", "reddit.com", "youtube.com", "medium.com", "twitter.com", "x.com", "linkedin.com", "facebook.com", "github.com", "stackoverflow.com", "quora.com", "amazon.com", "nytimes.com", "bbc.com", "cnn.com", "forbes.com", "bloomberg.com", "techcrunch.com"]);
+
   try {
     const d = data as Record<string, unknown>;
 
     if (provider === "apollo") {
       const org = d.organization as Record<string, unknown> | undefined;
       if (org) {
-        // Extract competitors or related companies if available
-        const industries = org.industry as string;
-        if (industries) entities.push(industries);
+        if (org.industry) entities.push(org.industry as string);
+        if (org.name) entities.push(org.name as string);
+        // Extract keywords which often contain competitor names
+        const keywords = org.keywords as string[] | undefined;
+        if (keywords) entities.push(...keywords.slice(0, 5));
       }
-    } else if (provider === "exa") {
-      // Extract domains from search results
-      const results = (d.results as Array<{ url?: string; title?: string }>) || [];
-      for (const result of results.slice(0, 3)) {
+    } else if (provider === "exa" || provider === "brave") {
+      // Extract domains AND meaningful titles from search results
+      const results = (provider === "exa"
+        ? (d.results as Array<{ url?: string; title?: string; text?: string }>) || []
+        : ((d.web as Record<string, unknown>)?.results as Array<{ url?: string; title?: string }>) || []);
+
+      for (const result of results.slice(0, 5)) {
         if (result.url) {
           try {
             const hostname = new URL(result.url).hostname.replace("www.", "");
-            if (!hostname.includes("google") && !hostname.includes("wikipedia") &&
-                !hostname.includes("reddit") && !hostname.includes("youtube") &&
-                hostname.split(".").length <= 3) {
+            if (!skipDomains.has(hostname) && hostname.split(".").length <= 3) {
               entities.push(hostname);
             }
           } catch { /* skip */ }
+        }
+        // Extract company/product names from titles
+        if (result.title) {
+          // Look for patterns like "Company vs Company" or "Company: ..."
+          const vsMatch = result.title.match(/(\w+)\s+vs\.?\s+(\w+)/i);
+          if (vsMatch) {
+            entities.push(vsMatch[1], vsMatch[2]);
+          }
+        }
+      }
+    } else if (provider === "perplexity") {
+      // Extract from citations (domains) and mentioned companies in response
+      const citations = (d.citations as string[]) || [];
+      for (const url of citations.slice(0, 5)) {
+        try {
+          const hostname = new URL(url).hostname.replace("www.", "");
+          if (!skipDomains.has(hostname)) entities.push(hostname);
+        } catch { /* skip */ }
+      }
+    } else if (provider === "alphavantage") {
+      const name = d["Name"] as string;
+      if (name) entities.push(name);
+    } else if (provider === "edgar") {
+      const name = d.name as string;
+      if (name) entities.push(name);
+      const tickers = d.tickers as string[];
+      if (tickers) entities.push(...tickers);
+    } else if (provider === "coingecko") {
+      // Extract coin names from market data
+      if (Array.isArray(d)) {
+        for (const coin of (d as Array<{ name?: string }>).slice(0, 5)) {
+          if (coin.name) entities.push(coin.name);
         }
       }
     }
   } catch { /* skip */ }
 
-  return entities;
+  // Deduplicate and clean
+  return [...new Set(entities.map(e => e.trim()).filter(e => e.length > 1 && e.length < 50))];
 }
 
 // ── Helper: Extract Sources from State ──

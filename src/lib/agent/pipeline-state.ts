@@ -38,7 +38,7 @@ export interface PipelineState {
 }
 
 export function createInitialState(tier: "quick" | "standard" | "deep", specialists: string[]): PipelineState {
-  const maxPhases: Record<string, number> = { quick: 3, standard: 12, deep: 200 };
+  const maxPhases: Record<string, number> = { quick: 3, standard: 12, deep: 500 };
   return {
     tier,
     currentPhase: 0,
@@ -82,8 +82,8 @@ export function isComplete(state: PipelineState): boolean {
   if (state.currentPhase >= state.maxPhases) return true;
   if (state.tier === "quick" && state.currentPhase >= 3) return true;
   if (state.tier === "standard" && state.currentPhase >= 10) return true;
-  // Deep: only complete after exhaustive research — minimum 40 phases, 3+ debates, empty entity queue
-  if (state.tier === "deep" && state.entityQueue.length === 0 && state.currentPhase >= 40 && state.debateCount >= 3) return true;
+  // Deep: only complete after exhaustive research — minimum 100 phases, 5+ debates, empty entity queue
+  if (state.tier === "deep" && state.entityQueue.length === 0 && state.currentPhase >= 100 && state.debateCount >= 5) return true;
   return false;
 }
 

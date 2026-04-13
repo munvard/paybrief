@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrder, updateOrderStatus } from "@/lib/db/queries";
-import { runResearchPipeline } from "@/lib/pipeline/orchestrator";
+import { runPipelineSegment } from "@/lib/pipeline/orchestrator";
 
 export const maxDuration = 120;
 
-/**
- * DEV ONLY: Simulates a successful payment and triggers the research pipeline.
- * Skips Locus checkout entirely — marks order as PAID and runs the pipeline.
- *
- * Usage: POST /api/dev/simulate-payment  { "orderId": "..." }
- */
 export async function POST(req: NextRequest) {
   // Protected by admin secret in production
   if (process.env.NODE_ENV === "production") {
@@ -44,19 +38,29 @@ export async function POST(req: NextRequest) {
     // Mark as PAID
     await updateOrderStatus(orderId, "PAID");
 
-    // Fire off the research pipeline (same as webhook handler)
-    runResearchPipeline(orderId, order.taskDescription || order.companyName).catch(
-      (err) => {
-        console.error(`Pipeline failed for ${orderId}:`, err);
-        updateOrderStatus(orderId, "FAILED", {
-          errorMessage: err instanceof Error ? err.message : "Pipeline failed",
-        });
-      }
-    );
+    const tier = order.pipelineTier || "quick";
+
+    if (tier === "quick") {
+      // Quick tier: run synchronously (fast enough for one function)
+      runPipelineSegment(orderId, order.taskDescription || order.companyName).catch(
+        (err) => {
+          console.error(`Pipeline failed for ${orderId}:`, err);
+          updateOrderStatus(orderId, "FAILED", {
+            errorMessage: err instanceof Error ? err.message : "Pipeline failed",
+          });
+        }
+      );
+    } else {
+      // Standard/Deep: run FIRST segment only, then self-chaining takes over
+      // The status page polls every 2s and triggers /run-pipeline for next segments
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      fetch(`${appUrl}/api/orders/${orderId}/run-pipeline`, { method: "POST" }).catch(() => {});
+    }
 
     return NextResponse.json({
-      message: "Payment simulated — pipeline started",
+      message: `Payment simulated — ${tier === "quick" ? "pipeline started" : "first segment triggered, self-chaining active"}`,
       orderId,
+      tier,
       statusUrl: `/order/${orderId}/status`,
     });
   } catch (error) {
