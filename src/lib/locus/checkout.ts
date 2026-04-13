@@ -15,21 +15,21 @@ export async function createCheckoutSession(params: {
   description: string;
 }): Promise<CheckoutSession> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const isHttps = appUrl.startsWith("https://");
 
   return locusRequest<CheckoutSession>("/checkout/sessions", {
     method: "POST",
     body: {
       amount: params.amount,
       description: params.description,
-      webhookUrl: `${appUrl}/api/webhooks/locus`,
-      successUrl: `${appUrl}/order/${params.orderId}/status`,
-      cancelUrl: `${appUrl}`,
+      // Locus requires HTTPS for webhook/redirect URLs — omit in local dev
+      ...(isHttps && {
+        webhookUrl: `${appUrl}/api/webhooks/locus`,
+        successUrl: `${appUrl}/order/${params.orderId}/status`,
+        cancelUrl: `${appUrl}`,
+      }),
       metadata: { orderId: params.orderId },
       expiresInMinutes: 30,
-      receiptConfig: {
-        enabled: true,
-        merchantName: "PayBrief",
-      },
       idempotencyKey: params.orderId,
     },
   });
