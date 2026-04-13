@@ -14,6 +14,9 @@ export const orders = sqliteTable("orders", {
   taskDescription: text("task_description"),
   taskType: text("task_type"),
   classificationJson: text("classification_json"),
+  pipelineTier: text("pipeline_tier").default("quick"),
+  pipelinePhase: integer("pipeline_phase").default(0),
+  pipelineState: text("pipeline_state"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   completedAt: text("completed_at"),
@@ -59,8 +62,9 @@ export const agentDecisions = sqliteTable("agent_decisions", {
     .references(() => orders.id),
   step: integer("step").notNull(),
   round: integer("round").notNull().default(0),
-  action: text("action").notNull(), // classify, plan, call_api, synthesize, deliver, analyze
+  action: text("action").notNull(), // classify, plan, call_api, synthesize, deliver, analyze, debate, brief
   provider: text("provider"),
+  specialist: text("specialist"),
   reasoning: text("reasoning").notNull(),
   resultSummary: text("result_summary"),
   costUsdc: real("cost_usdc").notNull().default(0),

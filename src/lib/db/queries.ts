@@ -10,16 +10,21 @@ export async function createOrder(data: {
   focusArea?: string;
   email?: string;
   taskDescription?: string;
+  pipelineTier?: string;
 }) {
   const id = generateId();
   const now = new Date().toISOString();
+  const tierPrices: Record<string, number> = { quick: 0.5, standard: 2, deep: 3 };
+  const tier = data.pipelineTier || "quick";
+  const price = tierPrices[tier] || 3;
   await db.insert(orders).values({
     id,
     companyName: data.companyName,
     focusArea: data.focusArea || "all",
     email: data.email || null,
     taskDescription: data.taskDescription || null,
-    amountUsdc: Number(process.env.BRIEF_PRICE_USDC) || 3,
+    pipelineTier: tier,
+    amountUsdc: price,
     status: "CREATED",
     createdAt: now,
     updatedAt: now,
@@ -162,6 +167,7 @@ export async function logDecision(data: {
   round?: number;
   action: string;
   provider?: string;
+  specialist?: string;
   reasoning: string;
   resultSummary?: string;
   costUsdc?: number;
@@ -175,6 +181,7 @@ export async function logDecision(data: {
     step: data.step,
     round: data.round || 0,
     action: data.action,
+    specialist: data.specialist || null,
     provider: data.provider || null,
     reasoning: data.reasoning,
     resultSummary: data.resultSummary || null,
@@ -212,6 +219,21 @@ export async function getDecisionsByOrderId(orderId: string, afterStep?: number)
     .from(agentDecisions)
     .where(eq(agentDecisions.orderId, orderId))
     .orderBy(agentDecisions.step);
+}
+
+export async function updatePipelineState(
+  id: string,
+  phase: number,
+  state: string
+) {
+  await db
+    .update(orders)
+    .set({
+      pipelinePhase: phase,
+      pipelineState: state,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(orders.id, id));
 }
 
 export async function updateOrderClassification(
