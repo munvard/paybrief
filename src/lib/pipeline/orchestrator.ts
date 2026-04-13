@@ -299,75 +299,121 @@ async function researchPhase(
 
   state.currentPhase++;
 
-  // Decide next phase
-  if (state.allResults.length === 0) {
-    // No results at all - try again or fail
-    if (state.currentPhase >= state.maxPhases) {
+  // Decide next phase based on tier
+  if (state.allResults.length === 0 && state.currentPhase >= state.maxPhases) {
+    state.phaseType = "synthesize";
+    return { done: false };
+  }
+
+  if (state.tier === "quick") {
+    // Quick tier: classify → research → synthesize (done in 1-2 segments)
+    if (state.nextResearchPlan.length > 0) {
+      state.phaseType = "research";
+    } else {
       state.phaseType = "synthesize";
+    }
+    if (hasTime() && state.phaseType === "synthesize") {
+      return synthesizePhase(orderId, taskDescription, state, hasTime);
     }
     return { done: false };
   }
 
+  // === Standard and Deep tiers: FORCED multi-phase cadence ===
+  // NEVER go straight to synthesis — always do more work until phase limits
+
   if (isComplete(state)) {
     state.phaseType = "synthesize";
-  } else if (shouldAnalyze(state)) {
-    state.phaseType = "analysis";
-  } else if (shouldDebate(state)) {
-    state.phaseType = "debate";
-  } else if (state.nextResearchPlan.length > 0) {
-    // Still have planned API calls to make
+    return { done: false };
+  }
+
+  // If we have pending API calls, keep researching
+  if (state.nextResearchPlan.length > 0) {
     state.phaseType = "research";
-  } else if (state.tier === "quick") {
-    // Quick tier: go straight to synthesis after research
-    state.phaseType = "synthesize";
-  } else {
-    // Plan next round of research via Gemini
+    return { done: false };
+  }
+
+  // If entity queue has items (Deep tier), expand
+  if (state.tier === "deep" && state.entityQueue.length > 0) {
+    state.phaseType = "expand";
+    return { done: false };
+  }
+
+  // Forced cadence: after every 2 research phases → analysis
+  if (shouldAnalyze(state)) {
+    state.phaseType = "analysis";
+    return { done: false };
+  }
+
+  // Forced cadence: debate rounds
+  if (shouldDebate(state)) {
+    state.phaseType = "debate";
+    return { done: false };
+  }
+
+  // Still have budget for more research — ask Gemini what to investigate next
+  // But FORCE it to continue (override shouldContinue: false)
+  if (hasTime()) {
     const roundSummaries = state.allResults.map(r => ({
       provider: r.provider,
       summary: r.summary,
     }));
 
-    if (hasTime()) {
-      const nextPlan = await planNextRound(
-        taskDescription,
-        (state.classification?.taskType || "general") as import("../agent/api-registry").TaskType,
-        roundSummaries,
-        orderId
-      );
+    const nextPlan = await planNextRound(
+      taskDescription,
+      (state.classification?.taskType || "general") as import("../agent/api-registry").TaskType,
+      roundSummaries,
+      orderId
+    );
 
-      if (nextPlan.shouldContinue && nextPlan.apis.length > 0) {
-        state.nextResearchPlan = nextPlan.apis
-          .filter(a => a.provider !== "gemini")
-          .map(api => ({
-            provider: api.provider,
-            endpoint: api.endpoint,
-            reason: api.reason,
-            callParams: api.callParams,
-            specialist: pickSpecialistForApi(api.provider, state.specialists),
-          }));
+    // For Standard/Deep: ALWAYS plan more research even if Gemini says stop
+    // (unless we've hit phase limits)
+    const apis = nextPlan.apis?.filter(a => a.provider !== "gemini") || [];
+
+    if (apis.length > 0) {
+      state.nextResearchPlan = apis.map(api => ({
+        provider: api.provider,
+        endpoint: api.endpoint,
+        reason: api.reason,
+        callParams: api.callParams,
+        specialist: pickSpecialistForApi(api.provider, state.specialists),
+      }));
+
+      await logDecision({
+        orderId, step: nextStep(state), round, action: "analyze",
+        specialist: "moderator",
+        reasoning: nextPlan.reasoning || "Planning next research round",
+        resultSummary: nextPlan.shouldContinue
+          ? `Deep diving: ${nextPlan.researchGoal}`
+          : `Expanding research: ${nextPlan.researchGoal || "broader analysis"}`,
+        costUsdc: 0.01,
+        status: "success",
+      });
+
+      state.phaseType = "research";
+    } else {
+      // Gemini returned no APIs — generate more research from entity queue or broader queries
+      const fallbackApis = generateFallbackResearchPlan(taskDescription, state);
+      if (fallbackApis.length > 0) {
+        state.nextResearchPlan = fallbackApis;
 
         await logDecision({
           orderId, step: nextStep(state), round, action: "analyze",
           specialist: "moderator",
-          reasoning: nextPlan.reasoning,
-          resultSummary: `Next research: ${nextPlan.researchGoal}`,
+          reasoning: "Generating additional research angles to ensure comprehensive coverage",
+          resultSummary: `Expanding: ${fallbackApis.map(a => a.provider).join(", ")}`,
           costUsdc: 0.01,
           status: "success",
         });
 
         state.phaseType = "research";
       } else {
+        // Truly exhausted all research options
         state.phaseType = "synthesize";
       }
-    } else {
-      // Out of time in this segment - pick up planning in the next one
-      state.phaseType = "research";
     }
-  }
-
-  // For Quick tier, try to keep going in this segment
-  if (state.tier === "quick" && hasTime() && state.phaseType === "synthesize") {
-    return synthesizePhase(orderId, taskDescription, state, hasTime);
+  } else {
+    // Out of time in this segment — continue in next segment
+    state.phaseType = "research";
   }
 
   return { done: false };
@@ -821,6 +867,118 @@ async function synthesizePhase(
   state.phaseType = "complete";
 
   return { done: true, reportId, totalCost };
+}
+
+// ── Helper: Generate Fallback Research ──
+// When planNextRound returns no APIs, generate more research angles automatically
+
+function generateFallbackResearchPlan(taskDescription: string, state: PipelineState): Array<{
+  provider: string;
+  endpoint: string;
+  reason: string;
+  callParams: Record<string, unknown>;
+  specialist: string;
+}> {
+  const plan: Array<{
+    provider: string; endpoint: string; reason: string;
+    callParams: Record<string, unknown>; specialist: string;
+  }> = [];
+
+  const usedProviders = new Set(state.allResults.map(r => r.provider));
+  const entities = state.classification?.entities || [taskDescription.slice(0, 50)];
+  const primaryEntity = entities[0] || taskDescription.slice(0, 50);
+
+  // Always try providers not yet used
+  if (!usedProviders.has("brave") && state.specialists.includes("investigator")) {
+    plan.push({
+      provider: "brave", endpoint: "web-search",
+      reason: `Broader web search for ${primaryEntity} from independent search engine`,
+      callParams: { q: `${primaryEntity} analysis 2026` },
+      specialist: "investigator",
+    });
+  }
+
+  if (!usedProviders.has("apollo") && state.specialists.includes("data_analyst")) {
+    // Try to extract a domain from entity name
+    const domain = guessDomain(primaryEntity);
+    if (domain) {
+      plan.push({
+        provider: "apollo", endpoint: "org-enrichment",
+        reason: `Company enrichment for ${primaryEntity} — employee count, funding, industry`,
+        callParams: { domain },
+        specialist: "data_analyst",
+      });
+    }
+  }
+
+  if (!usedProviders.has("firecrawl") && state.specialists.includes("investigator")) {
+    // Try to find a URL from previous results to scrape
+    const urlToScrape = findUrlToScrape(state);
+    if (urlToScrape) {
+      plan.push({
+        provider: "firecrawl", endpoint: "scrape",
+        reason: `Scraping primary source: ${urlToScrape}`,
+        callParams: { url: urlToScrape },
+        specialist: "investigator",
+      });
+    }
+  }
+
+  if (!usedProviders.has("perplexity") && state.specialists.includes("researcher")) {
+    plan.push({
+      provider: "perplexity", endpoint: "chat",
+      reason: `AI-powered follow-up research on ${primaryEntity}`,
+      callParams: { query: `Detailed analysis of ${primaryEntity}: market position, competitors, recent developments` },
+      specialist: "researcher",
+    });
+  }
+
+  // For deep tier: add more varied searches
+  if (state.tier === "deep") {
+    plan.push({
+      provider: "exa", endpoint: "search",
+      reason: `Deep search: ${primaryEntity} competitors and alternatives`,
+      callParams: { query: `${primaryEntity} competitors alternatives comparison`, numResults: 8 },
+      specialist: "researcher",
+    });
+
+    if (entities.length > 1) {
+      plan.push({
+        provider: "exa", endpoint: "search",
+        reason: `Researching related entity: ${entities[1]}`,
+        callParams: { query: `${entities[1]} detailed analysis`, numResults: 5 },
+        specialist: "researcher",
+      });
+    }
+  }
+
+  return plan;
+}
+
+function guessDomain(entity: string): string | null {
+  const knownDomains: Record<string, string> = {
+    stripe: "stripe.com", adyen: "adyen.com", paypal: "paypal.com",
+    square: "squareup.com", apple: "apple.com", tesla: "tesla.com",
+    google: "google.com", microsoft: "microsoft.com", amazon: "amazon.com",
+    meta: "meta.com", nvidia: "nvidia.com", openai: "openai.com",
+    anthropic: "anthropic.com", cursor: "cursor.com", notion: "notion.so",
+    linear: "linear.app", figma: "figma.com", vercel: "vercel.com",
+    shopify: "shopify.com", spotify: "spotify.com", netflix: "netflix.com",
+    uber: "uber.com", airbnb: "airbnb.com", coinbase: "coinbase.com",
+  };
+  const lower = entity.toLowerCase().trim();
+  return knownDomains[lower] || null;
+}
+
+function findUrlToScrape(state: PipelineState): string | null {
+  for (const result of state.allResults) {
+    if (result.summary.includes("results:")) {
+      // Try to extract a URL-like pattern from exa/brave results
+      const match = result.summary.match(/https?:\/\/[^\s'"]+/);
+      if (match) return match[0];
+    }
+  }
+  return null;
 }
 
 // ── Helper: Pick Specialist for API ──

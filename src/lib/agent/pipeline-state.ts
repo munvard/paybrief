@@ -38,7 +38,7 @@ export interface PipelineState {
 }
 
 export function createInitialState(tier: "quick" | "standard" | "deep", specialists: string[]): PipelineState {
-  const maxPhases: Record<string, number> = { quick: 3, standard: 10, deep: 80 };
+  const maxPhases: Record<string, number> = { quick: 3, standard: 12, deep: 200 };
   return {
     tier,
     currentPhase: 0,
@@ -61,10 +61,11 @@ export function createInitialState(tier: "quick" | "standard" | "deep", speciali
 
 export function shouldDebate(state: PipelineState): boolean {
   if (state.tier === "quick") return false;
-  if (state.allResults.length < 3) return false;
+  if (state.allResults.length < 4) return false;
   const phasesSinceDebate = state.currentPhase - state.lastDebatePhase;
   if (state.tier === "standard") return phasesSinceDebate >= 3 && state.debateCount < 2;
-  return phasesSinceDebate >= 4;
+  // Deep: debate every 5 phases, unlimited debates
+  return phasesSinceDebate >= 5;
 }
 
 export function shouldAnalyze(state: PipelineState): boolean {
@@ -81,7 +82,8 @@ export function isComplete(state: PipelineState): boolean {
   if (state.currentPhase >= state.maxPhases) return true;
   if (state.tier === "quick" && state.currentPhase >= 3) return true;
   if (state.tier === "standard" && state.currentPhase >= 10) return true;
-  if (state.tier === "deep" && state.entityQueue.length === 0 && state.currentPhase >= 15 && state.debateCount >= 2) return true;
+  // Deep: only complete after exhaustive research — minimum 40 phases, 3+ debates, empty entity queue
+  if (state.tier === "deep" && state.entityQueue.length === 0 && state.currentPhase >= 40 && state.debateCount >= 3) return true;
   return false;
 }
 
