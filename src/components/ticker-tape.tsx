@@ -1,70 +1,19 @@
-import { getDb, schema } from "@/lib/db";
-import { desc, inArray } from "drizzle-orm";
+"use client";
+import { useEffect, useState } from "react";
 
-interface TickerEvent {
+interface UnifiedEvent {
+  id: string;
   kind: "birth" | "call" | "reproduce" | "die" | "revive" | "pulse";
   businessId: string;
   businessName: string;
   amount?: string;
-  at: Date;
-}
-
-export const revalidate = 3;
-
-async function loadEvents(): Promise<TickerEvent[]> {
-  const events: TickerEvent[] = [];
-  try {
-    const db = getDb();
-    const recent = await db
-      .select()
-      .from(schema.businesses)
-      .orderBy(desc(schema.businesses.statusChangedAt))
-      .limit(20);
-    const idToName = new Map(recent.map((b) => [b.id, b.name]));
-    for (const b of recent) {
-      const kind: TickerEvent["kind"] =
-        b.status === "alive" ? "birth"
-        : b.status === "dead" ? "die"
-        : b.status === "dying" ? "pulse"
-        : b.status === "conceived" || b.status === "deploying" || b.status === "gestating" ? "birth"
-        : "pulse";
-      events.push({
-        kind,
-        businessId: b.id,
-        businessName: b.name,
-        amount: String(b.walletBalanceCached),
-        at: b.statusChangedAt,
-      });
-    }
-
-    const calls = await db
-      .select()
-      .from(schema.calls)
-      .orderBy(desc(schema.calls.createdAt))
-      .limit(10);
-    for (const c of calls) {
-      events.push({
-        kind: "call",
-        businessId: c.businessId,
-        businessName: idToName.get(c.businessId) ?? c.businessId.slice(-6),
-        amount: String(c.revenueUsdc),
-        at: c.createdAt,
-      });
-    }
-  } catch {
-    // swallow — caller falls back
-  }
-
-  return events
-    .sort((a, b) => b.at.getTime() - a.at.getTime())
-    .slice(0, 20);
+  at: string;
 }
 
 function shortId(id: string): string {
   return `#${id.replace(/^biz_/, "").slice(-4).toUpperCase()}`;
 }
-
-function formatEvent(e: TickerEvent): string {
+function formatEvent(e: UnifiedEvent): string {
   const short = shortId(e.businessId);
   const name = e.businessName.length > 28 ? e.businessName.slice(0, 28) + "…" : e.businessName;
   switch (e.kind) {
@@ -76,27 +25,36 @@ function formatEvent(e: TickerEvent): string {
     case "pulse":   return `${short} ${name} · pulse $${Number(e.amount ?? 0).toFixed(2)}`;
   }
 }
-
-function dotClass(kind: TickerEvent["kind"]): string {
+function dotClass(kind: UnifiedEvent["kind"]): string {
   if (kind === "die") return "dead";
   if (kind === "pulse") return "dying";
   return "alive";
 }
 
-export async function TickerTape() {
-  const events = await loadEvents();
-  const fallback: TickerEvent[] = events.length === 0
-    ? [
-        { kind: "birth", businessId: "biz_haiku", businessName: "Shakespeare Haiku Bot", amount: "0.50", at: new Date() },
-        { kind: "call", businessId: "biz_roast", businessName: "Code Roaster", amount: "0.05", at: new Date() },
-        { kind: "reproduce", businessId: "biz_pitch", businessName: "Pitch Oracle", amount: "3.20", at: new Date() },
-        { kind: "revive", businessId: "biz_emoji", businessName: "Emoji Diplomat", amount: "1.00", at: new Date() },
-        { kind: "die", businessId: "biz_echo", businessName: "Echo Chamber", amount: "0.00", at: new Date() },
-        { kind: "call", businessId: "biz_cocktail", businessName: "Cocktail Alchemist", amount: "0.10", at: new Date() },
-      ]
-    : events;
+const FALLBACK: UnifiedEvent[] = [
+  { id: "f1", kind: "birth", businessId: "biz_haiku", businessName: "Shakespeare Haiku Bot", amount: "0.50", at: new Date().toISOString() },
+  { id: "f2", kind: "call", businessId: "biz_roast", businessName: "Code Roaster", amount: "0.05", at: new Date().toISOString() },
+  { id: "f3", kind: "reproduce", businessId: "biz_pitch", businessName: "Pitch Oracle", amount: "3.20", at: new Date().toISOString() },
+  { id: "f4", kind: "revive", businessId: "biz_emoji", businessName: "Emoji Diplomat", amount: "1.00", at: new Date().toISOString() },
+  { id: "f5", kind: "die", businessId: "biz_echo", businessName: "Echo Chamber", amount: "0.00", at: new Date().toISOString() },
+  { id: "f6", kind: "call", businessId: "biz_cocktail", businessName: "Cocktail Alchemist", amount: "0.10", at: new Date().toISOString() },
+];
 
-  const stream = [...fallback, ...fallback, ...fallback];
+export function TickerTape() {
+  const [events, setEvents] = useState<UnifiedEvent[]>([]);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/events")
+        .then((r) => r.json())
+        .then((j) => setEvents(j.events ?? []))
+        .catch(() => {});
+    load();
+    const iv = setInterval(load, 8000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const source = events.length > 0 ? events : FALLBACK;
+  const stream = [...source, ...source, ...source];
 
   return (
     <div
@@ -123,7 +81,7 @@ export async function TickerTape() {
       >
         {stream.map((e, i) => (
           <span
-            key={`${e.businessId}-${i}`}
+            key={`${e.id}-${i}`}
             style={{ padding: "0 22px", display: "inline-flex", alignItems: "center", gap: 10 }}
           >
             <span className={`status-dot ${dotClass(e.kind)}`} style={{ width: 6, height: 6 }} />
