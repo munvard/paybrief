@@ -106,6 +106,20 @@ Not recommended (requires BWL credentials, Locus API key, Postgres, Redis). See 
 
 For BWL deploy: `git push locus main` (after setting up the Locus git remote per the BuildWithLocus docs).
 
+## Known hackathon-beta constraints
+
+- **Locus agent self-registration** (`POST /api/register`) is rate-limited to **5 per IP per hour** on the beta. This caps how fast we can pre-seed new businesses for demo day (one batch of 5, wait an hour, another 5). Every commission consumes one slot.
+- **Locus wallet allowance** defaults to $10 lifetime per agent. Increase via the Locus dashboard before running the `scripts/seed-demo.mjs` script or attempting more than ~3 live $3 commissions.
+- **BWL credits** start at $1 (4 services). You need to load more via `POST /v1/billing/pay` — each commission's business = $0.25/month.
+
+## Verified end-to-end at hackathon submission
+
+- Phase 1: Foundry project + web + heart + Postgres + Redis — healthy on BWL (tag `phase-1-complete`)
+- Phase 2: One demo business (Shakespeare Haiku Bot) live with real $0.25 deposit → JWT → `/call` → Gemini haiku returned; MCP endpoint installable in Claude Code (tag `phase-2-complete`)
+- Phase 3: Commission API + council orchestrator deployed; classifier + researcher + engineer verified running against Gemini; AST check rejects dangerous patterns (tag `phase-3-complete`)
+- Phase 4: Full gallery UI + commission flow + specimen card + heart cron with death clock + reproduction trigger + revive endpoint (tag `phase-4-complete`)
+- Phase 5: README + PITCH script + admin-bypass seed script shipped; pre-seed pending a rate-limit window (tag `phase-5-docs-complete`)
+
 ## Built by
 
 Menua Vardanyan (solo) · For the Locus Paygentic Hackathon · Week 2 · April 2026.
