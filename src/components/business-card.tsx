@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Sparkline } from "./sparkline";
 
 export interface Business {
   id: string;
@@ -9,52 +10,189 @@ export interface Business {
   callCountCached: number;
   parentId: string | null;
   bwlUrl: string | null;
-  createdAt: string;
+  createdAt: string | Date;
+  statusChangedAt?: string | Date | null;
 }
 
-export function BusinessCard({ b }: { b: Business }) {
+function romanMonth(n: number): string {
+  return ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"][n] ?? "—";
+}
+
+function bornString(d: Date): string {
+  return `Born ${d.getDate()}.${romanMonth(d.getMonth())}.MMXXVI`;
+}
+
+function diedString(d: Date): string {
+  return `† ∘ d. ${d.getDate()}.${romanMonth(d.getMonth())}.MMXXVI`;
+}
+
+function shortNum(id: string): string {
+  return `No. ${id.replace(/^biz_/, "").slice(-4).toUpperCase()}`;
+}
+
+export function BusinessCard({ b, featured = false }: { b: Business; featured?: boolean }) {
   const alive = b.status === "alive";
   const dead = b.status === "dead";
   const dying = b.status === "dying";
-  const color = alive ? "#00ff88" : dead ? "#ff2626" : dying ? "#ffaa00" : "#555";
+  const created = new Date(b.createdAt);
+  const statusChanged = b.statusChangedAt ? new Date(b.statusChangedAt) : created;
+
+  const statusLabel = alive ? "ALIVE" : dead ? "DEAD" : dying ? "DYING" : b.status.toUpperCase();
+
+  const nameStyle: React.CSSProperties = featured
+    ? {
+        fontFamily: "var(--font-display)",
+        fontSize: 82,
+        fontWeight: 400,
+        letterSpacing: "-0.03em",
+        lineHeight: 0.95,
+        fontVariationSettings: '"SOFT" 30, "opsz" 96',
+        color: "var(--ink-0)",
+      }
+    : {
+        fontFamily: "var(--font-display)",
+        fontSize: 32,
+        fontWeight: 500,
+        letterSpacing: "-0.02em",
+        lineHeight: 1.05,
+        fontVariationSettings: '"SOFT" 30, "opsz" 48',
+        color: "var(--ink-0)",
+      };
+
   return (
-    <div
+    <article
       style={{
-        border: `1px solid ${color}`,
-        background: "#111",
-        padding: "1rem",
-        borderRadius: 6,
+        padding: featured ? "32px 0 48px" : "28px 0 32px",
+        borderTop: "1px solid var(--rule-strong)",
+        position: "relative",
       }}
     >
-      <div style={{ fontSize: 12, opacity: 0.5, fontFamily: "ui-monospace, monospace" }}>
-        #{b.id.slice(-6)}
+      {/* Top metadata row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          marginBottom: 18,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            color: "var(--ink-2)",
+            letterSpacing: "0.04em",
+            textDecoration: dead ? "line-through" : "none",
+          }}
+        >
+          {shortNum(b.id)}
+        </span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.14em",
+            color: "var(--ink-2)",
+          }}
+        >
+          <span className={`status-dot ${b.status}`} />
+          {statusLabel}
+          <span style={{ marginLeft: 10, color: "var(--ink-2)" }}>
+            {dead ? diedString(statusChanged) : bornString(created)}
+          </span>
+        </span>
       </div>
-      <div style={{ fontSize: 18, fontWeight: 600, color: "#ff6b35", marginTop: 4 }}>{b.name}</div>
-      <div style={{ fontSize: 13, fontStyle: "italic", opacity: 0.8, marginTop: 4 }}>{b.pitch}</div>
-      <div style={{ marginTop: 8, fontSize: 13, fontFamily: "ui-monospace, monospace" }}>
-        Wallet: <span style={{ color: "#00ff88" }}>${Number(b.walletBalanceCached).toFixed(4)}</span>
+
+      {/* Name */}
+      <Link
+        href={`/biz/${b.id}`}
+        style={{ display: "block", color: "inherit", textDecoration: "none", ...nameStyle }}
+      >
+        {b.name}
+      </Link>
+
+      {/* Pitch */}
+      <div
+        style={{
+          fontFamily: "var(--font-body)",
+          fontStyle: "italic",
+          color: "var(--ink-1)",
+          fontSize: featured ? 22 : 17,
+          lineHeight: 1.45,
+          marginTop: featured ? 16 : 10,
+          maxWidth: featured ? 780 : undefined,
+        }}
+      >
+        {b.pitch}
       </div>
-      <div style={{ fontSize: 12, opacity: 0.6, fontFamily: "ui-monospace, monospace" }}>
-        Calls: {b.callCountCached} · {b.status.toUpperCase()}
-      </div>
-      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-        <Link href={`/biz/${b.id}`} style={{ fontSize: 12, textDecoration: "underline" }}>
-          Open
-        </Link>
-        {b.bwlUrl && alive && (
-          <a href={b.bwlUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, textDecoration: "underline" }}>
-            Try it
-          </a>
-        )}
-        {dead && (
+
+      {/* Footer: sparkline + metrics + CTA */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: featured ? "auto 1fr auto auto auto" : "auto 1fr auto auto",
+          gap: 28,
+          alignItems: "baseline",
+          marginTop: featured ? 40 : 24,
+        }}
+      >
+        <div>
+          <Sparkline businessId={b.id} width={featured ? 220 : 140} height={featured ? 40 : 28} />
+          <div
+            className="f-caps"
+            style={{ marginTop: 6, fontSize: 10 }}
+          >
+            24h balance
+          </div>
+        </div>
+        {!featured && <div />}
+        <div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: featured ? 30 : 22,
+              color: dead ? "var(--ink-2)" : "var(--ink-0)",
+              lineHeight: 1,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            ${Number(b.walletBalanceCached).toFixed(2)}
+          </div>
+          <div className="f-caps" style={{ marginTop: 4 }}>Wallet</div>
+        </div>
+        <div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: featured ? 30 : 22,
+              color: "var(--ink-0)",
+              lineHeight: 1,
+            }}
+          >
+            {b.callCountCached}
+          </div>
+          <div className="f-caps" style={{ marginTop: 4 }}>Calls</div>
+        </div>
+        <div>
           <Link
             href={`/biz/${b.id}`}
-            style={{ fontSize: 12, textDecoration: "underline", color: "#ff2626" }}
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: featured ? 18 : 14,
+              color: "var(--forge)",
+              textDecoration: "none",
+              borderBottom: "1px solid var(--forge-dim)",
+              paddingBottom: 2,
+              whiteSpace: "nowrap",
+            }}
           >
-            Revive $1
+            Open specimen →
           </Link>
-        )}
+        </div>
       </div>
-    </div>
+    </article>
   );
 }

@@ -1,16 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { fraunces, plexSerif, plexMono } from "@/lib/fonts";
+import { StatusBar } from "@/components/status-bar";
+import { TickerTape } from "@/components/ticker-tape";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "The Foundry — AI that gives birth to AI",
@@ -26,14 +19,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${fraunces.variable} ${plexSerif.variable} ${plexMono.variable}`}
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground" style={{ fontFamily: "'Sora', var(--font-geist-sans), sans-serif" }}>
+      <body>
+        <StatusBar />
+        <TickerTape />
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

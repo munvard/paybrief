@@ -1,8 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BusinessCard, type Business } from "./business-card";
 
-export function Gallery() {
+const FILTERS = [
+  { k: "all", l: "All" },
+  { k: "alive", l: "Alive" },
+  { k: "dying", l: "Dying" },
+  { k: "dead", l: "Dead" },
+  { k: "conceived", l: "Newborn" },
+];
+
+export function Gallery({ featuredId }: { featuredId?: string | null }) {
   const [all, setAll] = useState<Business[]>([]);
   const [filter, setFilter] = useState<string>("all");
 
@@ -13,7 +21,7 @@ export function Gallery() {
         const j = await r.json();
         setAll(j.businesses ?? []);
       } catch {
-        // ignore
+        /* ignore */
       }
     }
     refresh();
@@ -21,45 +29,93 @@ export function Gallery() {
     return () => clearInterval(iv);
   }, []);
 
-  const filtered = filter === "all" ? all : all.filter((b) => b.status === filter);
-  const filters = ["all", "alive", "dying", "dead", "conceived", "deploying"];
+  const visible = useMemo(() => {
+    let rows = filter === "all" ? all : all.filter((b) => b.status === filter);
+    if (featuredId) rows = rows.filter((b) => b.id !== featuredId);
+    return rows;
+  }, [all, filter, featuredId]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: all.length };
+    for (const b of all) c[b.status] = (c[b.status] ?? 0) + 1;
+    return c;
+  }, [all]);
+
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, fontFamily: "ui-monospace, monospace", fontSize: 13 }}>
-        {filters.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            style={{
-              padding: "4px 10px",
-              background: filter === f ? "#ff6b35" : "#1a1a1a",
-              color: filter === f ? "#000" : "#f5f5dc",
-              border: "1px solid #333",
-              borderRadius: 4,
-              cursor: "pointer",
-            }}
-          >
-            {f} {filter === f && all.filter((b) => f === "all" || b.status === f).length}
-          </button>
-        ))}
+    <section className="page-gutter container-xl" style={{ padding: "0 96px 48px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          marginBottom: 28,
+        }}
+      >
+        <div className="f-caps">— The gallery</div>
+        <div
+          style={{
+            display: "flex",
+            gap: 24,
+            fontFamily: "var(--font-body)",
+            fontSize: 14,
+          }}
+        >
+          {FILTERS.map((f) => {
+            const active = filter === f.k;
+            const n = counts[f.k] ?? 0;
+            return (
+              <button
+                key={f.k}
+                onClick={() => setFilter(f.k)}
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  padding: 0,
+                  cursor: "pointer",
+                  color: active ? "var(--ink-0)" : "var(--ink-2)",
+                  borderBottom: active ? "1px solid var(--forge)" : "1px solid transparent",
+                  paddingBottom: 4,
+                  fontFamily: "inherit",
+                  fontSize: "inherit",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                {f.l}{" "}
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-2)" }}>
+                  {n}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-      {filtered.length === 0 ? (
-        <div style={{ opacity: 0.5, padding: "2rem", textAlign: "center" }}>
-          No businesses {filter !== "all" ? filter : ""} yet.
+
+      {visible.length === 0 ? (
+        <div
+          style={{
+            padding: "48px 0",
+            textAlign: "center",
+            fontFamily: "var(--font-body)",
+            fontStyle: "italic",
+            color: "var(--ink-2)",
+            borderTop: "1px solid var(--rule)",
+          }}
+        >
+          The registry is quiet in this category.
         </div>
       ) : (
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 16,
+            gridTemplateColumns: "1fr 1fr",
+            gap: "0 48px",
           }}
         >
-          {filtered.map((b) => (
+          {visible.map((b) => (
             <BusinessCard key={b.id} b={b} />
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

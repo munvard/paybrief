@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Sparkline } from "./sparkline";
 
 interface Business {
   id: string;
@@ -15,6 +16,25 @@ interface Business {
   parentId: string | null;
   handlerCode: string | null;
   birthCertOnchainTx: string | null;
+  createdAt: string;
+  statusChangedAt: string;
+}
+
+function roman(n: number): string {
+  return ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][n] ?? "—";
+}
+function kicker(d: Date): string {
+  return `${d.getDate()}.${roman(d.getMonth())}.MMXXVI`;
+}
+function shortNum(id: string): string {
+  return `No. ${id.replace(/^biz_/, "").slice(-4).toUpperCase()}`;
+}
+function rel(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
 export function SpecimenCard({ businessId }: { businessId: string }) {
@@ -28,9 +48,7 @@ export function SpecimenCard({ businessId }: { businessId: string }) {
         const r = await fetch(`/api/biz/${businessId}`);
         const j = await r.json();
         setData(j);
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     }
     refresh();
     const iv = setInterval(refresh, 10000);
@@ -44,156 +62,378 @@ export function SpecimenCard({ businessId }: { businessId: string }) {
   }
 
   const b = data.business;
-  if (!b) return <div style={{ opacity: 0.5, padding: 24 }}>Loading...</div>;
+  if (!b) return <div style={{ opacity: 0.6, padding: 48, fontStyle: "italic" }}>Loading specimen…</div>;
 
   const alive = b.status === "alive";
   const dead = b.status === "dead";
+  const created = new Date(b.createdAt);
+  const ageDays = Math.max(1, Math.floor((Date.now() - created.getTime()) / 86400000));
 
   return (
-    <div
+    <article
       style={{
-        background: "#f5f5dc",
-        color: "#111",
-        padding: "2.5rem",
-        borderRadius: 8,
-        maxWidth: 720,
+        background: "var(--paper)",
+        color: "var(--paper-ink)",
+        fontFamily: "var(--font-body)",
+        maxWidth: 860,
         margin: "0 auto",
-        fontFamily: "ui-serif, Georgia, serif",
-        boxShadow: "0 30px 60px -12px rgba(0,0,0,0.4)",
+        padding: "64px 72px 72px",
+        boxShadow: "0 40px 80px -20px rgba(0,0,0,0.5)",
+        position: "relative",
       }}
     >
-      <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, opacity: 0.55 }}>#{b.id}</div>
-      <h1 style={{ fontSize: "3rem", margin: "6px 0 0", fontWeight: 700 }}>{b.name}</h1>
-      <div style={{ fontStyle: "italic", opacity: 0.8, marginTop: 8 }}>{b.pitch}</div>
-
+      {/* Masthead */}
       <div
         style={{
-          marginTop: 24,
-          paddingTop: 16,
-          borderTop: "1px solid rgba(0,0,0,0.15)",
-          fontFamily: "ui-monospace, monospace",
-          fontSize: 16,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          fontFamily: "var(--font-body)",
+          fontSize: 11,
+          color: "var(--paper-ink-2)",
+          textTransform: "uppercase",
+          letterSpacing: "0.22em",
+          borderBottom: "1px solid var(--paper-rule)",
+          paddingBottom: 16,
+          marginBottom: 36,
         }}
       >
-        Wallet:{" "}
-        <span style={{ color: "#047857", fontWeight: 600 }}>
-          ${Number(b.walletBalanceCached).toFixed(4)} USDC
-        </span>
-        <br />
-        Calls: {b.callCountCached}
-        <br />
-        Status: <b>{b.status.toUpperCase()}</b>
+        <span>The Foundry · Specimen Registry</span>
+        <span>MMXXVI</span>
       </div>
 
-      {alive && b.bwlUrl && (
-        <div style={{ marginTop: 24 }}>
+      {/* Kicker */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          fontFamily: "var(--font-mono)",
+          fontSize: 12,
+          color: "var(--paper-ink-2)",
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          marginBottom: 12,
+        }}
+      >
+        <span>{shortNum(b.id)}</span>
+        <span>{kicker(created)}</span>
+      </div>
+
+      {/* Headline */}
+      <h1
+        className="f-display"
+        style={{
+          fontSize: 82,
+          lineHeight: 0.96,
+          margin: 0,
+          fontWeight: 400,
+          fontVariationSettings: '"SOFT" 30, "opsz" 96',
+          letterSpacing: "-0.03em",
+          color: "var(--paper-ink)",
+        }}
+      >
+        {b.name}
+      </h1>
+
+      {/* Pitch */}
+      <p
+        style={{
+          fontFamily: "var(--font-body)",
+          fontStyle: "italic",
+          fontSize: 22,
+          lineHeight: 1.45,
+          marginTop: 20,
+          marginBottom: 40,
+          color: "var(--paper-ink-2)",
+          maxWidth: 640,
+        }}
+      >
+        {b.pitch}
+      </p>
+
+      <div style={{ height: 1, background: "var(--paper-rule)" }} />
+
+      {/* Vital signs */}
+      <section style={{ padding: "32px 0" }}>
+        <div
+          style={{
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "var(--paper-ink-2)",
+            marginBottom: 20,
+          }}
+        >
+          Vital Signs
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 32 }}>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 36,
+                lineHeight: 1,
+                color: alive ? "#1a6b4e" : "var(--paper-ink-2)",
+              }}
+            >
+              ${Number(b.walletBalanceCached).toFixed(2)}
+            </div>
+            <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 8, color: "var(--paper-ink-2)" }}>
+              Wallet
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Sparkline businessId={b.id} width={180} height={28} color="#8a3318" />
+            </div>
+          </div>
+          <div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 36, lineHeight: 1 }}>
+              {b.callCountCached}
+            </div>
+            <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 8, color: "var(--paper-ink-2)" }}>
+              Calls served
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 24,
+                lineHeight: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span className={`status-dot ${b.status}`} />
+              <span style={{ fontStyle: alive ? "normal" : "italic" }}>{b.status}</span>
+            </div>
+            <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", marginTop: 8, color: "var(--paper-ink-2)" }}>
+              {alive ? `${ageDays}d alive` : "status"}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div style={{ height: 1, background: "var(--paper-rule)" }} />
+
+      {/* Genome */}
+      <section style={{ padding: "36px 0" }}>
+        <div
+          style={{
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "var(--paper-ink-2)",
+            marginBottom: 20,
+          }}
+        >
+          Genome
+        </div>
+        <blockquote
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-body)",
+            fontStyle: "italic",
+            fontSize: 22,
+            lineHeight: 1.5,
+            color: "var(--paper-ink)",
+            borderLeft: "2px solid #8a3318",
+            paddingLeft: 20,
+            maxWidth: 680,
+          }}
+        >
+          &ldquo; {b.genome} &rdquo;
+        </blockquote>
+        <div
+          style={{
+            marginTop: 14,
+            fontSize: 13,
+            color: "var(--paper-ink-2)",
+            fontStyle: "italic",
+          }}
+        >
+          — commissioned {rel(b.createdAt)}
+        </div>
+      </section>
+
+      <div style={{ height: 1, background: "var(--paper-rule)" }} />
+
+      {/* Genealogy */}
+      <section style={{ padding: "32px 0" }}>
+        <div
+          style={{
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "var(--paper-ink-2)",
+            marginBottom: 20,
+          }}
+        >
+          Genealogy
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 32 }}>
+          <Field label="Parent" value={b.parentId ?? "genesis"} />
+          <Field label="Generation" value={b.parentId ? "II+" : "I"} />
+          <Field label="Status" value={b.status} />
+        </div>
+      </section>
+
+      <div style={{ height: 1, background: "var(--paper-rule)" }} />
+
+      {/* On-chain */}
+      <section style={{ padding: "32px 0" }}>
+        <div
+          style={{
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "var(--paper-ink-2)",
+            marginBottom: 20,
+          }}
+        >
+          On-chain
+        </div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 1.7 }}>
+          <div>Wallet <span style={{ color: "var(--paper-ink-2)" }}>·</span> {b.walletAddress ?? "—"}</div>
+          <div>Birth cert <span style={{ color: "var(--paper-ink-2)" }}>·</span> {b.birthCertOnchainTx ?? "off-chain (MVP)"}</div>
+        </div>
+      </section>
+
+      <div style={{ height: 1, background: "var(--paper-rule)" }} />
+
+      {/* Actions */}
+      <section style={{ padding: "36px 0" }}>
+        {alive && b.bwlUrl && (
           <a
             href={b.bwlUrl}
             target="_blank"
             rel="noreferrer"
             style={{
               display: "inline-block",
-              background: "#ff6b35",
-              color: "#fff",
-              padding: "0.75rem 1.5rem",
-              borderRadius: 6,
-              fontFamily: "ui-sans-serif, system-ui",
-              fontWeight: 700,
+              fontFamily: "var(--font-body)",
+              fontSize: 20,
+              color: "var(--paper-ink)",
+              borderBottom: "1px solid #8a3318",
+              paddingBottom: 6,
               textDecoration: "none",
             }}
           >
-            Open the business →
+            Try the business &nbsp;<span style={{ color: "#8a3318" }}>→</span>
           </a>
-        </div>
-      )}
-
-      {dead && (
-        <div style={{ marginTop: 24 }}>
-          <button
-            onClick={requestRevive}
-            style={{
-              background: "#ff2626",
-              color: "#fff",
-              border: 0,
-              padding: "0.75rem 1.5rem",
-              borderRadius: 6,
-              fontFamily: "ui-sans-serif, system-ui",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Revive for $1
-          </button>
-          {reviveUrl && (
-            <div style={{ marginTop: 12, fontSize: 13 }}>
-              Pay via:{" "}
-              <a href={reviveUrl} target="_blank" rel="noreferrer">
-                {reviveUrl}
-              </a>
-            </div>
-          )}
-        </div>
-      )}
-
-      {b.bwlUrl && (
-        <div
-          style={{
-            marginTop: 32,
-            background: "#001122",
-            color: "#00d4ff",
-            padding: 16,
-            borderRadius: 6,
-            fontFamily: "ui-monospace, monospace",
-            fontSize: 13,
-          }}
-        >
-          <b>Install in Claude Code:</b>
-          <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap" }}>
-            {`claude mcp add foundry-${b.id.replace(/^biz_/, "").slice(0, 8)} ${b.bwlUrl}/mcp/sse \\\n  --header "Authorization: Bearer <token>"`}
-          </pre>
-        </div>
-      )}
-
-      <div style={{ marginTop: 24, fontFamily: "ui-monospace, monospace", fontSize: 12, opacity: 0.7 }}>
-        Wallet address: {b.walletAddress ?? "—"}
-        <br />
-        Parent: {b.parentId ?? "genesis"}
-        {b.birthCertOnchainTx && (
-          <>
-            <br />
-            Birth cert tx: {b.birthCertOnchainTx}
-          </>
         )}
-      </div>
-
-      {b.handlerCode && (
-        <div style={{ marginTop: 24 }}>
-          <button
-            onClick={() => setShowCode((v) => !v)}
-            style={{ background: "transparent", border: "1px solid #666", padding: "6px 12px", cursor: "pointer", fontFamily: "ui-sans-serif, system-ui", fontSize: 13 }}
-          >
-            {showCode ? "Hide" : "Show"} the AI that powers this
-          </button>
-          {showCode && (
-            <pre
+        {dead && (
+          <>
+            <button
+              onClick={requestRevive}
               style={{
-                marginTop: 12,
-                background: "#111",
-                color: "#00ff88",
-                padding: 16,
-                fontSize: 12,
-                borderRadius: 4,
-                overflow: "auto",
+                fontFamily: "var(--font-body)",
+                fontSize: 20,
+                color: "var(--paper-ink)",
+                background: "transparent",
+                border: 0,
+                borderBottom: "1px solid var(--blood)",
+                paddingBottom: 6,
+                cursor: "pointer",
               }}
             >
-              {b.handlerCode}
+              Revive this specimen — 1 USDC &nbsp;<span style={{ color: "var(--blood)" }}>↻</span>
+            </button>
+            {reviveUrl && (
+              <div style={{ marginTop: 12, fontSize: 13 }}>
+                Pay here: <a href={reviveUrl} target="_blank" rel="noreferrer" style={{ color: "#8a3318" }}>{reviveUrl}</a>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Install in Claude */}
+      {b.bwlUrl && (
+        <>
+          <div style={{ height: 1, background: "var(--paper-rule)" }} />
+          <section style={{ padding: "32px 0" }}>
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "var(--paper-ink-2)",
+                marginBottom: 16,
+              }}
+            >
+              Install in Claude
+            </div>
+            <pre
+              style={{
+                background: "var(--bg-0)",
+                color: "var(--slate)",
+                padding: "18px 20px",
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+              }}
+            >
+{`claude mcp add foundry-${b.id.replace(/^biz_/, "").slice(0, 8)} \\
+  ${b.bwlUrl}/mcp/sse \\
+  --header "Authorization: Bearer <token>"`}
             </pre>
-          )}
-        </div>
+          </section>
+        </>
       )}
 
-      <div style={{ marginTop: 24, fontSize: 12, opacity: 0.6 }}>
-        <b>Genome:</b> {b.genome}
+      {/* Handler code */}
+      {b.handlerCode && (
+        <>
+          <div style={{ height: 1, background: "var(--paper-rule)" }} />
+          <section style={{ padding: "32px 0 0" }}>
+            <button
+              onClick={() => setShowCode((v) => !v)}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--paper-rule)",
+                padding: "10px 18px",
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                color: "var(--paper-ink)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {showCode ? "Hide" : "Show"} the handler that runs this business
+            </button>
+            {showCode && (
+              <pre
+                style={{
+                  marginTop: 16,
+                  background: "var(--bg-0)",
+                  color: "var(--mint)",
+                  padding: 20,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  overflow: "auto",
+                }}
+              >
+                {b.handlerCode}
+              </pre>
+            )}
+          </section>
+        </>
+      )}
+    </article>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--paper-ink-2)", marginBottom: 6 }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 15, color: "var(--paper-ink)" }}>
+        {value}
       </div>
     </div>
   );
