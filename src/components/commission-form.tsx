@@ -15,7 +15,15 @@ export function CommissionForm() {
         body: JSON.stringify({ prompt, email }),
       });
       const j = await r.json();
-      if (j.checkoutUrl) {
+      if (j.checkoutUrl && j.sessionId) {
+        // Persist sessionId so the /commission/success page can verify payment
+        // even if Locus Checkout does not append it to the redirect URL.
+        try {
+          window.sessionStorage.setItem("foundry:lastSessionId", j.sessionId);
+          window.localStorage.setItem("foundry:lastSessionId", j.sessionId);
+        } catch {
+          /* ignore quota/SSR edge cases */
+        }
         window.location.href = j.checkoutUrl;
       } else {
         alert("Error: " + (j.error ?? "unknown"));

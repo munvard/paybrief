@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
     body: {
       amount: "0.5",
       description: "The Foundry — commission a new AI business",
-      successUrl: appUrl ? `${appUrl}/commission/success` : undefined,
+      // Include a template placeholder — if Locus supports substitution, great.
+      // If not, the frontend falls back to sessionStorage to carry the sessionId.
+      successUrl: appUrl ? `${appUrl}/commission/success?sessionId={SESSION_ID}` : undefined,
       cancelUrl: appUrl ? `${appUrl}/commission` : undefined,
       metadata: { kind: "foundry_commission", prompt, email: email ?? "" },
       expiresInMinutes: 30,
