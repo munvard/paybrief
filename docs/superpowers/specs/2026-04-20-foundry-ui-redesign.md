@@ -503,3 +503,84 @@ Deferred to post-hackathon:
 - Is the "editorial specimen" metaphor the right direction, or do you want something else (more Bloomberg, more brutalist, more maximalist)?
 - Any specific references (sites / products you've seen) that you want me to draw from?
 - Approve the plan as-is → I begin Phase A; or rework → tell me which part.
+
+---
+
+# APPENDIX A — The 7 winning-upgrades (from Week 1 winners research)
+
+After visiting all 3 Week 1 winners (Give With Locus 1st, Whisper 2nd, Dispatch 3rd), the base spec is directionally correct but needs these 7 additions to reach winner-grade:
+
+## A1. Real product visual in the hero
+
+**All three winners have an embedded product screenshot or looping demo in the hero.** Foundry must too. Design: right-side-of-hero holds an ~560×320px dark panel that loops an annotated screencast of the commission flow (type prompt → council streams → URL goes live). Auto-playing, muted, looped. Falls back to a static annotated screenshot if video can't render.
+
+## A2. Treasury section (borrowed from Dispatch)
+
+Directly after the balance sheet strip, a full-width section titled `— THE TREASURY, ON-CHAIN.` Shows:
+- Master wallet card: big USDC balance + Base address + BaseScan link
+- 6–12 business wallet cards in a grid, each with address + live balance
+- "Recent on-chain transfers" table: from → to → amount → tx hash (linked), last 8 rows
+- Color coding: seed-outflows in forge, earnings-inflows in mint, reproduction in gold
+
+This is the "proof you can't fake" the user's critique demanded. Dispatch won 3rd on this density alone.
+
+## A3. How-it-works 5-step strip (borrowed from Dispatch)
+
+Horizontal strip below gallery:
+```
+01 COMMISSION  →  02 CLASSIFY  →  03 ENGINEER  →  04 DEPLOY  →  05 EARN
+```
+Each step: number in Fraunces large, one-line Plex Serif description, subtle rule above. Desktop: horizontal; mobile: vertical stack.
+
+## A4. Narrative essay (borrowed from Give With Locus)
+
+Dedicated scroll section with 4 italic-emphasized serif headlines that tell the manifesto:
+
+- *Software used to end when you closed the tab.*
+- *On BuildWithLocus, it doesn't have to.*
+- *A business without employees, customers, or a plan still needs to pay rent.*
+- *Every business has a pulse you can feel.*
+
+Each with 80–120 words of Plex Serif body. This is the difference between "feature list" and "gravity".
+
+## A5. MCP lead-hook section
+
+Our uncopyable angle. Neither winner has this. Full-width section titled `— INSTALL ANY BUSINESS INTO CLAUDE.` Content:
+- Short essay on what MCP means (two paragraphs)
+- Embedded 15-second screencast: terminal running `claude mcp add foundry-haiku ...`, then Claude invoking the tool
+- Copyable one-liner with a prominent "Install now →" button
+
+## A6. Devfolio-grade technical writeup
+
+Expand README / docs with a `STORY.md` file containing:
+- "Why the Foundry exists" (narrative essay, not feature list)
+- "Challenges I ran into" with 2–3 real bug war-stories (Turbopack cross-arch build failure, smart-wallet vs EOA, Locus Checkout field-name mismatch). Format matches Give With Locus exactly.
+- "What Locus makes possible" section listing the 8 primitives used, each load-bearing not decorative.
+
+Aim: 2000+ words, reads like investigative journalism of my own build.
+
+## A7. Looping product video for Devfolio submission
+
+A 90–120 second Loom/YouTube screencast showing:
+1. Gallery (10s)
+2. Click a business, pay $0.25, get output (15s)
+3. Install in Claude, invoke tool from Claude Code (25s)
+4. Commission a new business: type → pay → watch council → live URL (45s)
+5. Show the family tree / reproduction (15s)
+
+Whisper and Dispatch both embed Loom/YouTube videos on their Devfolio page. This is non-negotiable.
+
+## Revised phase order
+
+- Phase A (1.5h): fonts, tokens, chrome (status bar + ticker + footer)
+- Phase B (1h): `/api/stats`, `/api/events`, `/api/biz/[id]/sparkline`, `stage-demo.mjs`, run it
+- Phase C (2h): landing hero with **product-screenshot right panel** (A1), balance sheet, narrative essay (A4), 5-step strip (A3)
+- Phase D (1.5h): gallery + editorial business cards + sparklines
+- Phase E (1h): **Treasury section (A2)** — master + sub-wallets + transfers table
+- Phase F (0.5h): **MCP section (A5)** — install-in-Claude lead hook
+- Phase G (1h): specimen detail magazine feature
+- Phase H (0.5h): commission form + success + council terminal polish
+- Phase I (1h): deploy + browser-test via MCP + punch list
+- Phase J (outside of code, user-side): record Loom video (A7), write STORY.md (A6)
+
+**Total: ~10h shipping effort + ~1h video + ~1h writeup.**
