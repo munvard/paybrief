@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+data/
+drizzle/meta
+.env*
+screenshot-*.png
+devfolio-check.png
+build.log
+.playwright-mcp
+.vercel
+.vscode
+docs/
+foundry-heart/node_modules
+foundry-heart/dist
+business-template/node_modules
+business-template/dist

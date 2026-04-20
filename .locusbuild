@@ -1,0 +1,27 @@
+{
+  "services": {
+    "web": {
+      "path": ".",
+      "port": 8080,
+      "healthCheck": "/api/health",
+      "env": {
+        "DATABASE_URL": "${{db.DATABASE_URL}}",
+        "REDIS_URL": "${{cache.REDIS_URL}}"
+      }
+    },
+    "heart": {
+      "path": "foundry-heart",
+      "port": 8080,
+      "healthCheck": "/health",
+      "env": {
+        "DATABASE_URL": "${{db.DATABASE_URL}}",
+        "REDIS_URL": "${{cache.REDIS_URL}}",
+        "FOUNDRY_WEB_URL": "${{web.URL}}"
+      }
+    }
+  },
+  "addons": {
+    "db": { "type": "postgres" },
+    "cache": { "type": "redis" }
+  }
+}
