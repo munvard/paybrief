@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>{{NAME}} — on The Foundry</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui; background: #0a0a0a; color: #f5f5dc; padding: 2rem; max-width: 760px; margin: auto; line-height: 1.5; }
+    h1 { color: #ff6b35; font-size: 2.5rem; margin-bottom: 0.25rem; }
+    .pitch { font-style: italic; opacity: 0.8; margin-bottom: 2rem; font-size: 1.125rem; }
+    .wallet { background: #1a1a1a; padding: 1rem; border-left: 4px solid #00ff88; margin-bottom: 1.5rem; font-family: ui-monospace, monospace; }
+    input, button, textarea { font-family: inherit; font-size: 1rem; padding: 0.6rem; margin: 0.25rem 0; }
+    input, textarea { background: #1a1a1a; color: #f5f5dc; border: 1px solid #333; width: 100%; box-sizing: border-box; }
+    button { background: #ff6b35; color: #000; border: 0; padding: 0.75rem 1.5rem; cursor: pointer; font-weight: bold; border-radius: 4px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: #1a1a1a; color: #f5f5dc; border: 1px solid #555; }
+    pre { background: #1a1a1a; padding: 1rem; overflow: auto; border-radius: 4px; border: 1px solid #222; }
+    .mcp { background: #001122; padding: 1rem; border-left: 4px solid #00d4ff; margin-top: 2rem; border-radius: 4px; }
+    code { color: #00d4ff; }
+    .foundry-link { opacity: 0.5; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <h1>{{NAME}}</h1>
+  <div class="pitch">{{PITCH}}</div>
+  <div class="wallet">
+    Wallet: <span id="wallet-addr">{{WALLET_ADDRESS}}</span><br/>
+    Balance: <span id="wallet-bal">...</span> USDC<br/>
+    Calls served: <span id="call-count">...</span>
+  </div>
+
+  <h2>Try it</h2>
+  <div id="pay-section">
+    <button id="pay-btn">Pay $0.25 to try (~5 calls)</button>
+    <p style="opacity:0.6">Locus Checkout opens in a popup. Payment unlocks the form below.</p>
+  </div>
+  <div id="demo-section" style="display:none">
+    <textarea id="input" rows="3" placeholder="Your input..."></textarea>
+    <button id="call-btn">Call</button>
+    <pre id="output"></pre>
+    <p>Credits remaining: <span id="credits-left">...</span></p>
+    <button class="secondary" id="reveal-key">Reveal API key (dev mode)</button>
+    <pre id="api-key" style="display:none; word-break: break-all; white-space: pre-wrap;"></pre>
+  </div>
+
+  <div class="mcp">
+    <h3 style="color:#00d4ff; margin-top:0">Install in Claude</h3>
+    <p>Use this business as a pay-per-use tool inside your Claude Code:</p>
+    <pre><code>claude mcp add foundry-{{SLUG}} {{BASE_URL}}/mcp/sse \
+  --header "Authorization: Bearer &lt;token&gt;"</code></pre>
+    <p style="opacity:0.6">Get a &lt;token&gt; by paying above and clicking "Reveal API key".</p>
+  </div>
+
+  <p class="foundry-link" style="margin-top:3rem">
+    A Foundry-born business · <a href="https://svc-mo75rpmqzl5xel2x.buildwithlocus.com" style="color:#ff6b35">see the gallery</a>
+  </p>
+
+  <script>
+    async function refreshMeta() {
+      try {
+        const r = await fetch("/meta");
+        const j = await r.json();
+        document.getElementById("wallet-bal").textContent = j.walletBalance ?? "?";
+        document.getElementById("call-count").textContent = j.callCount ?? 0;
+      } catch {}
+    }
+    refreshMeta();
+    setInterval(refreshMeta, 15000);
+
+    const payBtn = document.getElementById("pay-btn");
+    const paySection = document.getElementById("pay-section");
+    const demoSection = document.getElementById("demo-section");
+    const output = document.getElementById("output");
+    const creditsLeft = document.getElementById("credits-left");
+    const apiKeyEl = document.getElementById("api-key");
+
+    let token = null;
+
+    payBtn.addEventListener("click", async () => {
+      payBtn.disabled = true; payBtn.textContent = "Creating checkout...";
+      const r = await fetch("/call/deposit", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ amountUsdc: 0.25 }) });
+      const j = await r.json();
+      if (!j.checkoutUrl) { payBtn.textContent = "Error: " + (j.error || "unknown"); return; }
+      const popup = window.open(j.checkoutUrl, "checkout", "width=500,height=700");
+      const poll = setInterval(async () => {
+        try {
+          const s = await fetch(`/call/deposit/status?sessionId=${j.sessionId}`).then(r => r.json());
+          if (s.state === "confirmed") {
+            clearInterval(poll); popup && popup.close();
+            token = s.token; creditsLeft.textContent = "$" + s.amountUsdc.toFixed(2);
+            paySection.style.display = "none"; demoSection.style.display = "block";
+            apiKeyEl.textContent = token;
+            await fetch(`/call/deposit/finalize`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ token }) });
+          }
+        } catch {}
+      }, 2000);
+    });
+
+    document.getElementById("call-btn").addEventListener("click", async () => {
+      const inp = document.getElementById("input").value;
+      output.textContent = "Calling...";
+      const r = await fetch("/call", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        body: JSON.stringify({ input: inp }),
+      });
+      const j = await r.json();
+      if (j.ok) { output.textContent = typeof j.output === "string" ? j.output : JSON.stringify(j.output, null, 2); creditsLeft.textContent = "$" + j.creditsRemaining.toFixed(3); }
+      else output.textContent = "Error: " + (j.error || "unknown");
+      refreshMeta();
+    });
+
+    document.getElementById("reveal-key").addEventListener("click", () => {
+      apiKeyEl.style.display = apiKeyEl.style.display === "none" ? "block" : "none";
+    });
+  </script>
+</body>
+</html>
