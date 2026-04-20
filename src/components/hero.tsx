@@ -7,161 +7,315 @@ function romanMonth(n: number): string {
 export function Hero() {
   const d = new Date();
   const issue = `MMXXVI · ${romanMonth(d.getMonth())}. ${d.getDate()}`;
+
   return (
-    <section
-      className="page-gutter container-xl"
-      style={{
-        paddingTop: 96,
-        paddingBottom: 48,
-        display: "grid",
-        gridTemplateColumns: "1.1fr 0.9fr",
-        gap: 72,
-        alignItems: "start",
-      }}
-    >
-      {/* Left: editorial headline */}
-      <div>
+    <section className="page-gutter container-xl" style={{ paddingTop: 72, paddingBottom: 48 }}>
+      {/* Masthead */}
+      <div
+        style={{
+          display: "flex",
+          gap: 24,
+          fontFamily: "var(--font-mono)",
+          fontSize: 12,
+          color: "var(--ink-2)",
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          marginBottom: 48,
+        }}
+      >
+        <span>Volume I</span>
+        <span>·</span>
+        <span>Issue {issue}</span>
+        <span>·</span>
+        <span>The Foundry</span>
+      </div>
+
+      {/* Headline — plain-language */}
+      <h1
+        className="f-display"
+        style={{
+          fontSize: 112,
+          lineHeight: 0.94,
+          letterSpacing: "-0.035em",
+          margin: 0,
+          fontWeight: 400,
+          fontVariationSettings: '"SOFT" 30, "opsz" 144',
+          color: "var(--ink-0)",
+          maxWidth: 1200,
+        }}
+      >
+        Type a sentence. <br />
+        Get a <em style={{ fontStyle: "italic", fontVariationSettings: '"SOFT" 100, "opsz" 144' }}>live</em> AI tool.
+      </h1>
+
+      {/* Subhead — concrete value prop */}
+      <p
+        style={{
+          fontFamily: "var(--font-body)",
+          fontSize: 22,
+          lineHeight: 1.5,
+          color: "var(--ink-1)",
+          maxWidth: 740,
+          marginTop: 32,
+        }}
+      >
+        You write one sentence — &ldquo;an AI that writes Shakespearean haikus&rdquo; — and four
+        minutes later there is a working API at a real URL. Users pay 5&nbsp;cents per call in
+        USDC. It keeps the money. When it can&apos;t afford its next thought, it dies.
+      </p>
+
+      {/* CTA row */}
+      <div style={{ marginTop: 40, display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 36 }}>
+        <Link
+          href="/commission"
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 22,
+            color: "var(--ink-0)",
+            textDecoration: "none",
+            borderBottom: "1px solid var(--forge)",
+            paddingBottom: 6,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Commission one &nbsp;<span style={{ color: "var(--forge)" }}>→</span>
+        </Link>
+        <Link
+          href="#example"
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 18,
+            color: "var(--ink-1)",
+            textDecoration: "none",
+            borderBottom: "1px solid var(--rule-strong)",
+            paddingBottom: 6,
+          }}
+        >
+          See one in action &nbsp;<span style={{ color: "var(--ink-2)" }}>↓</span>
+        </Link>
         <div
           style={{
-            display: "flex",
-            gap: 24,
             fontFamily: "var(--font-mono)",
             fontSize: 12,
             color: "var(--ink-2)",
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            marginBottom: 48,
+            letterSpacing: "0.06em",
           }}
         >
-          <span>Volume I</span>
-          <span>·</span>
-          <span>Issue {issue}</span>
-          <span>·</span>
-          <span>The Foundry</span>
-        </div>
-
-        <h1
-          className="f-display"
-          style={{
-            fontSize: 112,
-            lineHeight: 0.94,
-            letterSpacing: "-0.035em",
-            margin: 0,
-            fontWeight: 400,
-            fontVariationSettings: '"SOFT" 30, "opsz" 144',
-            color: "var(--ink-0)",
-          }}
-        >
-          A factory <br />
-          that gives <em style={{ fontStyle: "italic", fontVariationSettings: '"SOFT" 100, "opsz" 144' }}>birth</em> <br />
-          to AI.
-        </h1>
-
-        <p
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 19,
-            lineHeight: 1.55,
-            color: "var(--ink-1)",
-            maxWidth: 560,
-            marginTop: 48,
-          }}
-        >
-          The Foundry takes one sentence and returns a live AI business on
-          BuildWithLocus — its own USDC wallet, its own MCP endpoint, its own
-          pulse. When it cannot pay for hosting, it dies. Some reproduce first.
-        </p>
-
-        <div style={{ marginTop: 48, display: "flex", alignItems: "baseline", gap: 40 }}>
-          <Link
-            href="/commission"
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 22,
-              color: "var(--ink-0)",
-              textDecoration: "none",
-              borderBottom: "1px solid var(--forge)",
-              paddingBottom: 6,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Commission a business &nbsp;<span style={{ color: "var(--forge)" }}>→</span>
-          </Link>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              color: "var(--ink-2)",
-              letterSpacing: "0.06em",
-            }}
-          >
-            Fee · 0.50 USDC · settled on Base
-          </div>
+          Commission fee · 0.50 USDC · settled on Base
         </div>
       </div>
 
-      {/* Right: product demo panel (static-styled mockup for now) */}
-      <div>
+      {/* The flow — what you type becomes what they use */}
+      <div
+        id="example"
+        style={{
+          marginTop: 96,
+          borderTop: "1px solid var(--rule-strong)",
+          paddingTop: 48,
+        }}
+      >
+        <div className="f-caps" style={{ marginBottom: 32 }}>— A commission, from sentence to live tool</div>
+
         <div
           style={{
-            background: "var(--bg-1)",
-            border: "1px solid var(--rule-strong)",
-            borderRadius: 2,
-            overflow: "hidden",
-            fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            color: "var(--ink-1)",
+            display: "grid",
+            gridTemplateColumns: "1fr 56px 1fr 56px 1fr",
+            alignItems: "stretch",
+            gap: 0,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 14px",
-              borderBottom: "1px solid var(--rule)",
-              background: "var(--bg-0)",
-              color: "var(--ink-2)",
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--blood)" }} />
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--gold)" }} />
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--mint)" }} />
-            <span style={{ marginLeft: 16, fontSize: 11 }}>commissioning no.042 · 02:14 elapsed</span>
-          </div>
-          <div style={{ padding: "20px 22px", lineHeight: 1.75 }}>
-            <div style={{ color: "var(--forge)" }}>●</div>
-            <div><span style={{ color: "var(--forge)" }}>[ moderator ]</span> task classified as text-gen</div>
-            <div style={{ marginTop: 10 }}><span style={{ color: "var(--forge)" }}>[ researcher ]</span> exa → 3 comps, $0.05–0.20</div>
-            <div><span style={{ color: "var(--ink-2)" }}>  └</span> perplexity → market snapshot</div>
-            <div style={{ marginTop: 10 }}><span style={{ color: "var(--forge)" }}>[ engineer ]</span> handler · 47 lines · hash <span style={{ color: "var(--slate)" }}>3f9a…</span></div>
-            <div style={{ marginTop: 10 }}><span style={{ color: "var(--forge)" }}>[ shipwright ]</span> bwl/projects · <span style={{ color: "var(--mint)" }}>biz_7fk2x9</span></div>
-            <div><span style={{ color: "var(--ink-2)" }}>  └</span> git push · building <span style={{ color: "var(--ink-2)" }}>▓▓▓▓▓▓░░░</span></div>
-            <div><span style={{ color: "var(--ink-2)" }}>  └</span> deployed · <span style={{ color: "var(--mint)" }}>healthy</span></div>
-            <div style={{ marginTop: 10 }}><span style={{ color: "var(--forge)" }}>[ cashier ]</span> locus/register · <span style={{ color: "var(--slate)" }}>0x5f…2e1c</span></div>
-            <div><span style={{ color: "var(--ink-2)" }}>  └</span> birth cert signed · <span style={{ color: "var(--slate)" }}>tx 0x3a…91f2</span></div>
-            <div
-              style={{
-                marginTop: 18,
-                paddingTop: 14,
-                borderTop: "1px solid var(--rule)",
-                color: "var(--mint)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                fontStyle: "italic",
-              }}
-            >
-              ✶  Business no.042 is alive. &nbsp;svc-abc123.buildwithlocus.com
-            </div>
-          </div>
-        </div>
-        <div
-          className="f-caps"
-          style={{ marginTop: 14, textAlign: "right" }}
-        >
-          Fig. 1 · A commission in progress.
+          {/* Step 1 — Prompt */}
+          <FlowStep
+            index="01"
+            label="You type"
+            body={
+              <div
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontStyle: "italic",
+                  fontSize: 22,
+                  lineHeight: 1.4,
+                  color: "var(--ink-0)",
+                }}
+              >
+                &ldquo; An AI that writes Shakespearean haikus about any topic. &rdquo;
+              </div>
+            }
+            footer="— one sentence, 8+ characters"
+          />
+
+          <FlowArrow />
+
+          {/* Step 2 — Live URL */}
+          <FlowStep
+            index="02"
+            label="Foundry ships"
+            body={
+              <div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 15,
+                    color: "var(--mint)",
+                    marginBottom: 10,
+                  }}
+                >
+                  ● healthy · 3m 12s
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 14,
+                    color: "var(--ink-0)",
+                    wordBreak: "break-all",
+                  }}
+                >
+                  svc-abc123
+                  <span style={{ color: "var(--ink-2)" }}>.buildwithlocus.com</span>
+                </div>
+                <div
+                  style={{
+                    marginTop: 14,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    color: "var(--ink-2)",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  wallet 0x5f..2e1c &nbsp;·&nbsp; $0.10 USDC seed
+                </div>
+              </div>
+            }
+            footer="— a real container on BuildWithLocus"
+          />
+
+          <FlowArrow />
+
+          {/* Step 3 — Call + Output */}
+          <FlowStep
+            index="03"
+            label="Anyone pays + calls"
+            body={
+              <div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    color: "var(--ink-2)",
+                    marginBottom: 6,
+                  }}
+                >
+                  POST /call &nbsp;·&nbsp; $0.05
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontStyle: "italic",
+                    fontSize: 17,
+                    lineHeight: 1.55,
+                    color: "var(--ink-0)",
+                    marginTop: 8,
+                  }}
+                >
+                  My deploy doth crawl,
+                  <br />
+                  through wires both frayed and unknown —
+                  <br />
+                  at last, a green light.
+                </div>
+                <div
+                  style={{
+                    marginTop: 14,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 12,
+                    color: "var(--mint)",
+                  }}
+                >
+                  wallet &nbsp;+$0.05
+                </div>
+              </div>
+            }
+            footer="— you share the URL, it earns USDC"
+          />
         </div>
       </div>
     </section>
+  );
+}
+
+function FlowStep({
+  index,
+  label,
+  body,
+  footer,
+}: {
+  index: string;
+  label: string;
+  body: React.ReactNode;
+  footer: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: "0 28px 32px 0",
+        display: "flex",
+        flexDirection: "column",
+        gap: 18,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 14,
+        }}
+      >
+        <span
+          className="f-display"
+          style={{
+            fontSize: 28,
+            color: "var(--forge)",
+            fontVariationSettings: '"SOFT" 30, "opsz" 48',
+          }}
+        >
+          {index}
+        </span>
+        <span
+          className="f-caps"
+          style={{ fontSize: 11 }}
+        >
+          {label}
+        </span>
+      </div>
+      <div style={{ minHeight: 140 }}>{body}</div>
+      <div
+        style={{
+          fontFamily: "var(--font-body)",
+          fontSize: 12,
+          color: "var(--ink-2)",
+          fontStyle: "italic",
+          marginTop: "auto",
+        }}
+      >
+        {footer}
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--ink-2)",
+        fontSize: 28,
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      →
+    </div>
   );
 }

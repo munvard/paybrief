@@ -1,10 +1,11 @@
 import { Hero } from "@/components/hero";
+import { Examples } from "@/components/examples";
 import { BalanceSheet } from "@/components/balance-sheet";
+import { ProcessStrip } from "@/components/process-strip";
 import { Manifesto } from "@/components/manifesto";
 import { FeaturedSpecimen } from "@/components/featured-specimen";
 import { Gallery } from "@/components/gallery";
 import { Treasury } from "@/components/treasury";
-import { ProcessStrip } from "@/components/process-strip";
 import { McpSection } from "@/components/mcp-section";
 import { EventStream } from "@/components/event-stream";
 import { getDb, schema } from "@/lib/db";
@@ -33,10 +34,19 @@ export default async function Home() {
   const featuredId = featured?.id ?? null;
   return (
     <main>
+      {/* WHAT IT IS */}
       <Hero />
-      <BalanceSheet />
-      <Manifesto />
 
+      {/* WHAT YOU CAN MAKE */}
+      <Examples />
+
+      {/* HOW IT GOES FROM SENTENCE TO LIVE */}
+      <ProcessStrip />
+
+      {/* LIVE PROOF */}
+      <BalanceSheet />
+
+      {/* A FEATURED ONE */}
       {featured && (
         <section className="page-gutter container-xl" style={{ padding: "96px 96px 48px" }}>
           <div className="f-caps" style={{ marginBottom: 24 }}>— Featured specimen</div>
@@ -44,6 +54,7 @@ export default async function Home() {
         </section>
       )}
 
+      {/* THE REST OF THE REGISTRY + LIVE STREAM */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 48 }}>
         <Gallery featuredId={featuredId} />
         <aside className="page-gutter" style={{ paddingRight: 96, paddingTop: 28 }}>
@@ -51,9 +62,14 @@ export default async function Home() {
         </aside>
       </div>
 
-      <ProcessStrip />
+      {/* PROOF THE MONEY IS REAL */}
       <Treasury />
+
+      {/* A NEW THING — INSTALL ANY BUSINESS INTO CLAUDE */}
       <McpSection />
+
+      {/* WHY THIS EXISTS */}
+      <Manifesto />
     </main>
   );
 }
