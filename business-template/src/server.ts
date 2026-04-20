@@ -89,11 +89,12 @@ async function createCheckoutSession(amountUsdc: number, selfUrl: string) {
     method: "POST",
     headers: { "Authorization": `Bearer ${LOCUS_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      amount_usdc: amountUsdc,
+      amount: String(amountUsdc),
       description: `${BUSINESS_NAME} — ${amountUsdc} USDC credits`,
-      success_url: `${selfUrl}/#paid`,
-      cancel_url: `${selfUrl}/#cancel`,
-      metadata: { businessId: BUSINESS_ID, kind: "credits_deposit" },
+      successUrl: `${selfUrl}/#paid`,
+      cancelUrl: `${selfUrl}/#cancel`,
+      metadata: { businessId: BUSINESS_ID, kind: "credits_deposit", amountUsdc: String(amountUsdc) },
+      expiresInMinutes: 30,
     }),
   });
   return r.json();
@@ -163,8 +164,8 @@ const server = http.createServer(async (req, res) => {
       const session = await createCheckoutSession(amount, selfUrl);
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({
-        sessionId: session?.data?.id ?? session?.id,
-        checkoutUrl: session?.data?.hosted_url ?? session?.hosted_url,
+        sessionId: session?.data?.id,
+        checkoutUrl: session?.data?.checkoutUrl,
         amountUsdc: amount,
       }));
     }
@@ -174,7 +175,7 @@ const server = http.createServer(async (req, res) => {
       const s = await getCheckoutStatus(sessionId);
       const status = s?.data?.status ?? s?.status ?? "PENDING";
       if (status === "CONFIRMED" || status === "confirmed" || status === "PAID") {
-        const amountUsdc = Number(s?.data?.amount_usdc ?? s?.amount_usdc ?? 0.25);
+        const amountUsdc = Number(s?.data?.amount ?? s?.data?.amount_usdc ?? 0.25);
         const token = await issueCreditsToken(amountUsdc);
         res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ state: "confirmed", amountUsdc, token }));
