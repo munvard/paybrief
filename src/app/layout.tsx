@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agent Zero — Autonomous AI Research Council",
+  title: "The Foundry — AI that gives birth to AI",
   description:
-    "An autonomous AI agent with its own wallet and research council. Three specialist agents research, debate, and deliver using 9 premium data sources.",
+    "Describe an AI tool in one sentence. 3 minutes later it is live on BuildWithLocus with its own USDC wallet, its own paying customers, and an MCP endpoint. Every tool pays for its own hosting.",
 };
 
 export default function RootLayout({
