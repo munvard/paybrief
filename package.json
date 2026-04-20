@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "TURBOPACK_ENABLED=1 next dev",
-    "build": "next build --no-turbopack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
