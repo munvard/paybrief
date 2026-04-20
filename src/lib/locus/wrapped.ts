@@ -1,6 +1,7 @@
 import { locusRequest } from "./client";
-import { logApiCost } from "../db/queries";
 
+// orderId is kept for callsite compatibility; in Foundry it carries a commissionId
+// and is only used by the caller to correlate logs. No-op here.
 export async function callWrappedApi<T = unknown>(params: {
   provider: string;
   endpoint: string;
@@ -8,19 +9,9 @@ export async function callWrappedApi<T = unknown>(params: {
   orderId: string;
   estimatedCost?: number;
 }): Promise<T> {
-  const { provider, endpoint, body, orderId, estimatedCost } = params;
+  const { provider, endpoint, body } = params;
   const path = `/wrapped/${provider}/${endpoint}`;
-
-  const result = await locusRequest<T>(path, { method: "POST", body });
-
-  await logApiCost({
-    orderId,
-    provider,
-    endpoint,
-    costUsdc: estimatedCost || 0.01,
-  });
-
-  return result;
+  return locusRequest<T>(path, { method: "POST", body });
 }
 
 // ── Exa Search ──

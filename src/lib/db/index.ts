@@ -1,23 +1,24 @@
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
-import { createClient } from "@libsql/client";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
-let _db: LibSQLDatabase<typeof schema> | null = null;
+let _pool: Pool | null = null;
+let _db: NodePgDatabase<typeof schema> | null = null;
 
-export function getDb(): LibSQLDatabase<typeof schema> {
-  if (!_db) {
-    const client = createClient({
-      url: process.env.DATABASE_PATH || "file:./data/paybrief.db",
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    });
-    _db = drizzle(client, { schema });
-  }
+export function getDb(): NodePgDatabase<typeof schema> {
+  if (_db) return _db;
+  _pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 10,
+  });
+  _db = drizzle(_pool, { schema });
   return _db;
 }
 
-// Lazy proxy — db is only initialized on first property access (at runtime, not build time)
-export const db = new Proxy({} as LibSQLDatabase<typeof schema>, {
+export const db = new Proxy({} as NodePgDatabase<typeof schema>, {
   get(_target, prop) {
     return (getDb() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
+
+export { schema };
