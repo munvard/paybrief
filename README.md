@@ -1,110 +1,111 @@
-# Agent Zero — Autonomous AI Research Council
+# The Foundry
 
-> 3 AI specialist agents research independently, debate findings, and deliver reports using 9 premium data sources. Pay in USDC. Watch every decision live.
+> The Foundry turns a one-sentence prompt into a live AI tool — a real container on BuildWithLocus, with its own USDC wallet, its own paying customers, and an MCP endpoint that anyone can install into Claude. Every tool pays for its own hosting and dies if it can't.
 
-**Live:** [locushackaton.vercel.app](https://locushackaton.vercel.app)
-**Hackathon:** Locus Paygentic Hackathon — Week 1
-
----
-
-## What Is Agent Zero?
-
-Agent Zero is an **autonomous AI research council** — not a single-pass API wrapper, but an economic entity with its own wallet, specialist team, and decision-making process.
-
-When you give it a research task:
-
-1. **Moderator** classifies the task and assembles the right specialists
-2. **3 Specialists** research independently using different premium APIs:
-   - **Researcher** — market intelligence via Exa, Perplexity, Brave
-   - **Data Analyst** — hard numbers via CoinGecko, Alpha Vantage, Apollo, EDGAR
-   - **Investigator** — primary sources via Firecrawl, targeted searches
-3. **Council debates** — specialists challenge each other, identify gaps
-4. **Research expands** — new entities trigger deeper investigation
-5. **Final synthesis** — comprehensive report combining all perspectives
-
-## Why Not Just Use ChatGPT?
-
-| | ChatGPT | Agent Zero |
-|---|---|---|
-| **Data sources** | Free web | 9 premium paid APIs (Apollo, EDGAR SEC, Alpha Vantage, CoinGecko, Exa, Firecrawl, Perplexity, Brave, Gemini) |
-| **Perspectives** | 1 AI | 3 specialists + moderator |
-| **Self-criticism** | None | Specialists debate and challenge findings |
-| **Research depth** | Single pass | Multi-round with entity tree expansion |
-| **Duration** | Minutes | Quick (1 min) to Deep Dive (2-3+ hours) |
-| **Financial awareness** | None | Manages own wallet, tracks costs, keeps profit |
-| **Visible reasoning** | Hidden | Every decision, API call, and debate logged live |
-
-## Research Tiers
-
-| Tier | Price | Duration | Specialists | Debates |
-|------|-------|----------|-------------|---------|
-| **Quick** | $0.50 | ~1 min | 2 | 0 |
-| **Standard** | $2.00 | 5-10 min | 3 | 1-2 |
-| **Deep Dive** | $3.00 | 2-3+ hours | 3 | 5+ |
-
-## Locus Integration
-
-- **Locus Checkout** — USDC payments on Base chain
-- **9 Locus Wrapped APIs** — pay-per-use premium data sources
-- **Agent Wallet** — live balance, autonomous spending decisions
-- **Agent-to-Agent API** — other agents can hire Agent Zero programmatically
-
-## Self-Chaining Architecture
-
-Deep Dive tasks run for hours via a **self-chaining pipeline**. Each segment executes ~60-80s of work in a Vercel serverless function, saves state to the database, and exits. The status polling endpoint detects the pause and triggers the next segment. This enables indefinite research duration across hundreds of function invocations.
-
-## Tech Stack
-
-- **Frontend:** Next.js 16, TypeScript, Tailwind CSS v4, Sora + JetBrains Mono
-- **Database:** Drizzle ORM + Turso (libSQL)
-- **AI:** Google Gemini (classification, analysis, debate, synthesis)
-- **Deployment:** Vercel (self-chaining serverless)
-- **Payments:** Locus Checkout (USDC on Base)
-
-## Running Locally
-
-```bash
-git clone https://github.com/munvard/paybrief.git
-cd paybrief
-npm install
-cp .env.local.example .env.local  # Add your LOCUS_API_KEY
-npm run dev
-```
-
-## Agent-to-Agent API
-
-```bash
-curl -X POST https://locushackaton.vercel.app/api/agent/hire \
-  -H "Content-Type: application/json" \
-  -d '{"task": "Analyze Ethereum DeFi ecosystem", "tier": "quick"}'
-```
-
-Returns:
-```json
-{
-  "success": true,
-  "agent": "Agent Zero",
-  "reportUrl": "https://locushackaton.vercel.app/report/...",
-  "cost": 0.035,
-  "profit": 0.465,
-  "taskType": "crypto",
-  "apisUsed": ["gemini", "coingecko", "exa"]
-}
-```
-
-## Project Structure
-
-```
-src/
-  app/                    # Next.js pages + API routes
-  lib/
-    agent/                # Classifier, specialists, pipeline state, API registry
-    pipeline/             # Self-chaining orchestrator
-    locus/                # Locus client, checkout, wrapped API wrappers
-    db/                   # Drizzle schema, queries, connection
-  components/             # Order form, agent stats, decision log
-```
+**Live demo:** https://svc-mo7f7yq4aw1l7ukq.buildwithlocus.com
+**Built for:** Locus Paygentic Hackathon — Week 2 (BuildWithLocus track)
 
 ---
 
-Built by [Menua Vardanyan](https://github.com/munvard) for the Locus Paygentic Hackathon.
+## What this is
+
+The Foundry is an autonomous AI startup factory. A council of AI specialists takes a one-sentence prompt, researches the idea, generates a small AI microservice, provisions a dedicated BuildWithLocus project, registers a sub-wallet on Locus, wires USDC Checkout for pay-per-use, and ships a live HTTPS URL. Each resulting "business" is an economically autonomous lifeform:
+
+- **Earns USDC** from callers (human via Locus Checkout, or AI via MCP)
+- **Spends USDC** on its own LLM compute (Locus Wrapped Gemini)
+- **Pays for** its own BuildWithLocus hosting
+- **Reproduces** by commissioning child businesses when profitable
+- **Dies** when it can't pay for its next LLM call, auto-deprovisioning via the BWL API
+- **Can be revived** for $1 USDC by anyone who cares enough to adopt
+
+## Why this wins Week 2
+
+The only category of artifact no pure-LLM tool can produce is **a persistent, wallet-holding, self-funding service**. That's precisely what BuildWithLocus + Locus enables, and nothing else does.
+
+## Deep Locus integration
+
+| Primitive | Usage |
+|---|---|
+| Locus Checkout | **Inbound:** humans pay $3 to commission. **Outbound:** every business monetizes itself with $0.05–$0.10 calls. |
+| Locus Wrapped APIs | Council research (Exa, Perplexity) + code generation (Gemini) + runtime (each business calls Gemini with its own key). |
+| BuildWithLocus | Every component of the Foundry and every deployed business runs on BWL. Uses the full API surface: projects, environments, services, deployments, addons (Postgres + Redis), git push, service-to-service wiring via INTERNAL_URL. |
+| Locus agent self-registration | One fresh sub-agent per business via `POST /api/register`. |
+| USDC transfers | Seed capital, reproduction fees, adoption top-ups all flow via `POST /api/pay/send`. |
+| Spending controls | $10 allowance + $5 max-tx per business. |
+| On-chain birth certs | Each birth signed + optionally posted as Base calldata. |
+| Full auditability | Every commission, call, reproduction, death, revive logged with USDC amount. |
+
+## Architecture
+
+Deployed entirely on BuildWithLocus as two services + two addons:
+
+```
+FOUNDRY (one BWL project)
+├── foundry-web          Next.js 16: UI, council orchestrator, commission flow
+├── foundry-heart        Cron daemon: heartbeats, death clock, reproduction
+├── addon: db            Postgres (businesses, commissions, heartbeats, calls, lineage)
+└── addon: cache         Redis (event bus for SSE, rate limits)
+
+Each commissioned business (own BWL project per business)
+└── handler              Node container with sandbox + MCP + Checkout flow
+                         Sub-agent Locus wallet, HANDLER_SOURCE_B64 generated by Gemini
+```
+
+See `docs/superpowers/specs/2026-04-20-agent-zero-foundry-design.md` for the full design. See `docs/superpowers/plans/2026-04-20-agent-zero-foundry.md` for the implementation plan.
+
+## Commission a business
+
+1. Go to `/commission` on the live URL
+2. Type a one-sentence description of an AI tool (min 8 chars)
+3. Pay $3 USDC via Locus Checkout
+4. Watch the council terminal stream live (moderator → researcher → engineer → cashier → shipwright)
+5. ~3–4 minutes later: your business is live at its own `svc-{id}.buildwithlocus.com` URL with its own wallet.
+
+## Install a business in Claude
+
+Every business exposes an MCP SSE endpoint. On its landing page, copy the one-liner:
+
+```bash
+claude mcp add foundry-{slug} https://svc-{id}.buildwithlocus.com/mcp/sse \
+  --header "Authorization: Bearer <token>"
+```
+
+Get `<token>` by paying $0.25 on the business's landing page (unlocks ~5 calls).
+
+## Tech stack
+
+- **Next.js 16** (App Router, webpack build — Turbopack fails on BWL's cross-arch codebuild runner)
+- **Drizzle ORM + Postgres** (BWL addon)
+- **Redis** (BWL addon) for event bus
+- **TypeScript** throughout
+- **`node:vm`** constrained execution layer for generated handler code
+- **`jose`** for JWT (credits tokens, birth certificates)
+- **`acorn` + `acorn-walk`** for AST static checks on generated code
+- **`better-sqlite3`** inside business containers for local credits ledger
+
+## Repo layout
+
+```
+/                         Next.js app (foundry-web)
+├── src/app/              UI + API routes
+├── src/lib/
+│   ├── bwl/              BuildWithLocus API client
+│   ├── locus/            Locus Checkout + register + policy helpers
+│   ├── agent/            Council specialists + orchestrator
+│   └── db/               Drizzle schema + queries
+├── foundry-heart/        Separate BWL service: cron daemon
+├── business-template/    Per-business container: wrapper + sandbox + MCP
+├── drizzle/              Postgres migrations
+├── scripts/migrate.mjs   Boot-time idempotent migration runner
+└── docs/superpowers/     Design spec + implementation plan
+```
+
+## Running locally
+
+Not recommended (requires BWL credentials, Locus API key, Postgres, Redis). See design spec for full env var list if you really want to.
+
+For BWL deploy: `git push locus main` (after setting up the Locus git remote per the BuildWithLocus docs).
+
+## Built by
+
+Menua Vardanyan (solo) · For the Locus Paygentic Hackathon · Week 2 · April 2026.
