@@ -25,7 +25,7 @@ export default function Home() {
             fontWeight: 700,
           }}
         >
-          Commission a new business — $3 USDC
+          Commission a new business — $0.50 USDC
         </Link>
       </section>
       <section style={{ marginTop: "3rem" }}>

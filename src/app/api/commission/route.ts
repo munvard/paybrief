@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
   const session = await locusRequest<CheckoutSessionData>("/checkout/sessions", {
     method: "POST",
     body: {
-      amount: "3",
-      description: "Agent Zero Foundry — commission",
+      amount: "0.5",
+      description: "The Foundry — commission a new AI business",
       successUrl: appUrl ? `${appUrl}/commission/success` : undefined,
       cancelUrl: appUrl ? `${appUrl}/commission` : undefined,
       metadata: { kind: "foundry_commission", prompt, email: email ?? "" },

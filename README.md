@@ -26,7 +26,7 @@ The only category of artifact no pure-LLM tool can produce is **a persistent, wa
 
 | Primitive | Usage |
 |---|---|
-| Locus Checkout | **Inbound:** humans pay $3 to commission. **Outbound:** every business monetizes itself with $0.05–$0.10 calls. |
+| Locus Checkout | **Inbound:** humans pay $0.50 to commission. **Outbound:** every business monetizes itself with $0.05–$0.10 calls. |
 | Locus Wrapped APIs | Council research (Exa, Perplexity) + code generation (Gemini) + runtime (each business calls Gemini with its own key). |
 | BuildWithLocus | Every component of the Foundry and every deployed business runs on BWL. Uses the full API surface: projects, environments, services, deployments, addons (Postgres + Redis), git push, service-to-service wiring via INTERNAL_URL. |
 | Locus agent self-registration | One fresh sub-agent per business via `POST /api/register`. |
@@ -57,7 +57,7 @@ See `docs/superpowers/specs/2026-04-20-agent-zero-foundry-design.md` for the ful
 
 1. Go to `/commission` on the live URL
 2. Type a one-sentence description of an AI tool (min 8 chars)
-3. Pay $3 USDC via Locus Checkout
+3. Pay $0.50 USDC via Locus Checkout
 4. Watch the council terminal stream live (moderator → researcher → engineer → cashier → shipwright)
 5. ~3–4 minutes later: your business is live at its own `svc-{id}.buildwithlocus.com` URL with its own wallet.
 
@@ -109,7 +109,7 @@ For BWL deploy: `git push locus main` (after setting up the Locus git remote per
 ## Known hackathon-beta constraints
 
 - **Locus agent self-registration** (`POST /api/register`) is rate-limited to **5 per IP per hour** on the beta. This caps how fast we can pre-seed new businesses for demo day (one batch of 5, wait an hour, another 5). Every commission consumes one slot.
-- **Locus wallet allowance** defaults to $10 lifetime per agent. Increase via the Locus dashboard before running the `scripts/seed-demo.mjs` script or attempting more than ~3 live $3 commissions.
+- **Locus wallet allowance** defaults to $10 lifetime per agent. Each commission spends $0.25 in seed capital + ~$0.02 in LLM costs, so ~20 commissions fit within the default allowance. Increase via the Locus dashboard for longer runs.
 - **BWL credits** start at $1 (4 services). You need to load more via `POST /v1/billing/pay` — each commission's business = $0.25/month.
 
 ## Verified end-to-end at hackathon submission

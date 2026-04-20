@@ -144,7 +144,7 @@ async function runCommission(commissionId: string) {
     genome: prompt,
     parentId: row.commissionerType === "business" ? row.commissionerId ?? null : null,
     handlerSource: eng.handlerSource,
-    seedUsdc: 0.25,
+    seedUsdc: 0.1,
   });
   await logDecision(
     commissionId,
@@ -153,7 +153,7 @@ async function runCommission(commissionId: string) {
     "register_subagent",
     "Locus sub-agent created and seeded",
     `wallet=${cashier.walletAddress}`,
-    0.25
+    0.1
   );
 
   try {

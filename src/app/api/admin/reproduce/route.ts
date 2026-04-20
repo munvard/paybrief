@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     prompt: childPrompt,
     commissionerType: "business",
     commissionerId: parentId,
-    feePaidUsdc: 3,
+    feePaidUsdc: 0.5,
   });
   return Response.json({ ok: true, commissionId, childPrompt });
 }

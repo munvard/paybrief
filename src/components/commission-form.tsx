@@ -78,7 +78,7 @@ export function CommissionForm() {
           opacity: loading || prompt.length < 8 ? 0.5 : 1,
         }}
       >
-        {loading ? "..." : "Commission — $3 USDC"}
+        {loading ? "..." : "Commission — $0.50 USDC"}
       </button>
     </div>
   );

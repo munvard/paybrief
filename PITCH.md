@@ -48,7 +48,7 @@ claude mcp add foundry-haiku https://svc-xxxxx.buildwithlocus.com/mcp/sse --head
 > "But you don't care about that business. Let me commission a new one, live."
 
 [Type: "An AI that roasts my code for ten cents per line"]
-[Click Commission, pay $3]
+[Click Commission, pay $0.50]
 
 **(2:50)** — live council terminal
 

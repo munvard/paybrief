@@ -11,8 +11,8 @@ export async function checkReproduction(
     const candidates = await client.query(
       `SELECT id FROM businesses
        WHERE status = 'alive'
-         AND wallet_balance_cached >= 3.0
-         AND call_count_cached >= 20
+         AND wallet_balance_cached >= 1.0
+         AND call_count_cached >= 10
          AND (last_reproduced_at IS NULL OR last_reproduced_at < NOW() - INTERVAL '48 hours')
        LIMIT 5`
     );

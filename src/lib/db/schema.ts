@@ -41,7 +41,7 @@ export const commissions = pgTable("commissions", {
   commissionerEmail: text("commissioner_email"),
   checkoutSessionId: text("checkout_session_id"),
   agentPayTxHash: text("agent_pay_tx_hash"),
-  feePaidUsdc: numeric("fee_paid_usdc", { precision: 10, scale: 4 }).notNull().default("3.00"),
+  feePaidUsdc: numeric("fee_paid_usdc", { precision: 10, scale: 4 }).notNull().default("0.50"),
   businessId: text("business_id"),
   status: text("status").notNull().default("pending"),
   failureReason: text("failure_reason"),

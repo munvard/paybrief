@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     commissionerType: "human",
     commissionerEmail: email || undefined,
     checkoutSessionId: sessionId,
-    feePaidUsdc: Number(session.amount ?? 3),
+    feePaidUsdc: Number(session.amount ?? 0.5),
   });
 
   return Response.json({ state: "started", commissionId });
