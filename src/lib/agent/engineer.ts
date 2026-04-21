@@ -54,20 +54,41 @@ Generate the handler function.`;
       (res as { content?: string })?.content ??
       ""
     ) as string;
-    return raw
-      .replace(/^```(?:js|javascript)?\s*/i, "")
+    let cleaned = raw
+      .replace(/^\s*```(?:js|javascript|ts|typescript)?\s*/i, "")
       .replace(/```\s*$/i, "")
       .trim();
+    // If there's a fenced block anywhere, keep only its contents
+    const fenceMatch = cleaned.match(/```(?:js|javascript|ts|typescript)?\s*([\s\S]*?)```/);
+    if (fenceMatch) cleaned = fenceMatch[1].trim();
+    return cleaned;
   };
 
   let handlerSource = await tryOnce();
   let check = checkHandlerSource(handlerSource);
   if (!check.ok) {
-    const hint = `\n\nYour previous attempt was rejected for: ${check.reasons.join("; ")}. Output ONLY the function definition.`;
-    handlerSource = await tryOnce(hint);
+    const hint1 = `\n\nYour previous attempt was rejected for: ${check.reasons.join("; ")}. Output ONLY the function definition, pure JavaScript, no markdown fences, no TypeScript syntax.`;
+    handlerSource = await tryOnce(hint1);
+    check = checkHandlerSource(handlerSource);
+  }
+  if (!check.ok) {
+    const hint2 = `\n\nRejected again for: ${check.reasons.join("; ")}. Emit ONLY this exact shape, filling in the prompt body:\nasync function handle(input, ctx) {\n  const subject = typeof input === "string" ? input : (input && input.input) || "";\n  const response = await ctx.llm("...your prompt including " + subject, { maxTokens: 512 });\n  return { output: response.trim() };\n}`;
+    handlerSource = await tryOnce(hint2);
+    check = checkHandlerSource(handlerSource);
+  }
+  if (!check.ok) {
+    // Safe fallback — always valid. Wraps the pitch as the LLM prompt prefix.
+    const safePitch = input.pitch.replace(/[`$\\"]/g, " ").slice(0, 240).trim();
+    handlerSource =
+      `async function handle(input, ctx) {\n` +
+      `  const subject = typeof input === "string" ? input : (input && input.input) || "";\n` +
+      `  const prompt = ${JSON.stringify(safePitch + ": ")} + subject;\n` +
+      `  const response = await ctx.llm(prompt, { maxTokens: 512 });\n` +
+      `  return { output: String(response).trim() };\n` +
+      `}`;
     check = checkHandlerSource(handlerSource);
     if (!check.ok) {
-      throw new Error("engineer: generated code failed AST check — " + check.reasons.join("; "));
+      throw new Error("engineer: fallback handler failed AST check — " + check.reasons.join("; "));
     }
   }
 
