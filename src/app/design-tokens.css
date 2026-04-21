@@ -117,6 +117,10 @@ a:hover { color: var(--forge); }
   from { stroke-dashoffset: var(--total-len, 200); }
   to { stroke-dashoffset: 0; }
 }
+@keyframes foundry-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .status-dot.alive { background: var(--mint); animation: breath 4s ease-in-out infinite; }
